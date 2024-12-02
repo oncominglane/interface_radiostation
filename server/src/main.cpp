@@ -7,8 +7,8 @@ int main() {
     //while (1) {
         //RxEth(buffer);
         //Tx(buffer);
-        //audioRxEth(buffer);
-        audioTxEth(buffer);
+        audioRxEth(buffer);
+        //audioTxEth(buffer);
         //Rx(buffer);
         //TxEth(buffer);
     //}

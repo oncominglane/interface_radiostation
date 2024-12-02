@@ -44,13 +44,8 @@ void audioRxEth(unsigned char *buffer) {
     listen(sockfd, 5);
     clilen = sizeof(cli_addr);
 
-    if ((newsockfd = accept(sockfd, (struct sockaddr *)&cli_addr, &clilen)) < 0) {
-        perror("Accept error");
-        return;
-    }
-
     // Открываем PCM устройство
-    if (snd_pcm_open(&playback_handle, "hw:0,0", SND_PCM_STREAM_PLAYBACK, 0) < 0) {
+    if (snd_pcm_open(&playback_handle, "hw:1,0", SND_PCM_STREAM_PLAYBACK, 0) < 0) {
         perror("Cannot open audio device");
         close(sockfd);
         return;
@@ -212,44 +207,58 @@ void audioRxEth(unsigned char *buffer) {
     
     */
 
-    system("gpio -g mode 20 out");
-    system("gpio -g write 20 1");
-
-    // Основной цикл для приёма и воспроизведения звуковых данных
-    for (int j = 0; j < 1024*32; j++) {
-        int n = recv(newsockfd, buffer, BUFFER_SIZE, 0);
-        if (n <= 0) {
-            if (n == 0) {
-                printf("Connection closed by client\n");
-            } else {
-                perror("Receive error");
-            }
-            break;
+    while (true) {
+        if ((newsockfd = accept(sockfd, (struct sockaddr *)&cli_addr, &clilen)) < 0) {
+        perror("Accept error");
+        continue;
         }
 
-        /*for (int i = 0; i < BUFFER_SIZE; i++) {
-            printf("%02x", buffer[i]);
-            if (((i + 1) % 16) == 0)
-                printf("\n");
-        }*/                                           //Отладка 
+        printf("Client connected\n");
 
-        int err = 0;    
-        int frames = n / (channels * 2);
-        err = snd_pcm_writei(playback_handle, buffer, frames);
-        // Воспроизводим данные с помощью ALSA
-        if (err < 0) {
-            if (err == EPIPE){
-                fprintf(stderr, "Temporary underrun, retrying...\n"); //Обработка, если установлен флаг SND_PCM_NONBLOCK
-                snd_pcm_prepare(playback_handle);
+        system("gpio -g mode 20 out");
+        system("gpio -g write 20 1");
+
+        // Основной цикл для приёма и воспроизведения звуковых данных
+        while (true) {
+            int n = recv(newsockfd, buffer, BUFFER_SIZE, 0);
+            if (n <= 0) {
+                if (n == 0) {
+                    printf("Connection closed by client\n");
+                    close(newsockfd);
+                    system("gpio -g write 20 0");
+                    break;
+                } else {
+                    perror("Receive error");
+                    close(newsockfd);
+                    system("gpio -g write 20 0");
+                }
+                break;
             }
-            if (err == EAGAIN){
-                fprintf(stderr, "Temporary unavailable, retrying...\n"); 
-                continue;
+
+            /*for (int i = 0; i < BUFFER_SIZE; i++) {
+                printf("%02x", buffer[i]);
+                if (((i + 1) % 16) == 0)
+                    printf("\n");
+            }*/                                           //Отладка 
+
+            int err = 0;    
+            int frames = n / (channels * 2);
+            err = snd_pcm_writei(playback_handle, buffer, frames);
+            // Воспроизводим данные с помощью ALSA
+            if (err < 0) {
+                if (err == EPIPE){
+                    fprintf(stderr, "Temporary underrun, retrying...\n"); //Обработка, если установлен флаг SND_PCM_NONBLOCK
+                    snd_pcm_prepare(playback_handle);
+                }
+                if (err == EAGAIN){
+                    fprintf(stderr, "Temporary unavailable, retrying...\n"); 
+                    continue;
+                }
             }
+            dataCapacity += n;
+            
+            //printf("\ndataCapacity: %ld\n\n", dataCapacity);
         }
-        dataCapacity += n;
-        
-        //printf("\ndataCapacity: %ld\n\n", dataCapacity);
     }
 
     // Освобождаем ресурсы

@@ -35,7 +35,7 @@ void audioTxEth(unsigned char *buffer) {
     }
 
     // Открываем PCM устройство
-    if (snd_pcm_open(&capture_handle, "hw:0,0", SND_PCM_STREAM_CAPTURE, 0) < 0) {
+    if (snd_pcm_open(&capture_handle, "hw:0,6", SND_PCM_STREAM_CAPTURE, 0) < 0) {
         perror("Cannot open audio device");
         close(sockfd);
         return;
@@ -159,16 +159,11 @@ void audioTxEth(unsigned char *buffer) {
             continue;
         }
 
-
-        /*for (unsigned int i = 0; i < BUFFER_SIZE; i++) {
-		buffer[i] = 10000 * sinf(2 * M_PI * 200 * ((float)i / sampleRate));
-	    }*/                                                                 //Генерация синусоиды
-
         /*for (int i = 0; i < BUFFER_SIZE; i++) {
             printf("%02x", buffer[i]);
             if (((i + 1) % 16) == 0)
                 printf("\n");
-        }*/                                           //Отладка
+        } */                                          //Отладка
     
         // Передаем данные по сети
         //ssize_t bytes_sent = send(sockfd, buffer, frames * channels * 2, 0);
