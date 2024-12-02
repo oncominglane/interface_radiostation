@@ -1,18 +1,22 @@
 #include "TxRx.h"
+#include <sys/ioctl.h>
 #define DEV_DIR "/dev"
 
-int Tx(unsigned char *buffer) {
+void Tx(unsigned char *buffer) {
+
     int fd;
     struct termios options;
 
+    printf("TX EXECS NOW\n");
+
     char *port = find_ttyUSB_port();
-    printf("Found ttyUSB port: %s\n", port);
+
+    printf("Found ttyAMA port: %s\n", port);
 
     // Открываем COM порт для передачи
     fd = open(port, O_RDWR | O_NOCTTY);
     if (fd == -1) {
-        perror("open_port: Unable to open /dev/ttyUSB0 - ");
-        return 1;
+        perror("open_port: Unable to open /dev/ttyAMA0 - ");
     }
 
     // Получаем текущие параметры порта
@@ -34,53 +38,27 @@ int Tx(unsigned char *buffer) {
     // Устанавливаем флаги управления потоком (например, RTS/CTS)
     options.c_cflag |= CRTSCTS;
 
+    // Включаем сигнал RTS
+    int status;
+    ioctl(fd, TIOCMGET, &status); // Получаем текущее состояние сигналов
+    status |= TIOCM_RTS; // Включаем RTS
+    ioctl(fd, TIOCMSET, &status); // Устанавливаем новое состояние сигналов
+    
     // Применяем новые параметры порта
     tcsetattr(fd, TCSANOW, &options);
-
-    // Поднимаем сигналы DTR и RTS
-    int status;
-    if (ioctl(fd, TIOCMGET, &status) < 0) 
-    {
-        perror("Error getting status");
-        close(fd);
-        return 1;
-    }
-    status |= TIOCM_DTR; // Поднимаем DTR
-    status |= TIOCM_RTS; // Поднимаем RTS
-    if (ioctl(fd, TIOCMSET, &status) < 0) 
-    {
-        perror("Error setting status");
-        close(fd);
-    }
-
-    usleep(10000);
 
     // Отправляем данные через COM порт
     int bytes_written = write(fd, buffer, BUFFER_SIZE);
 
-    if (bytes_written < 0) 
-    {
+    if (bytes_written < 0) {
         perror("Error writing to port - ");
         close(fd);
-        return 1;
     }
 
-     // Опускаем сигналы DTR и RTS
-    if (ioctl(fd, TIOCMGET, &status) < 0) 
-    {
-        perror("Error getting status");
-        close(fd);
-        return 1;
-    }
-    status |= TIOCM_DTR | TIOCM_RTS;
-    if (ioctl(fd, TIOCMSET, &status) < 0) 
-    {
-        perror("Error getting status");
-        close(fd);
-        return 1;
-    }
+    /*ioctl(fd, TIOCMGET, &status); // Получаем текущее состояние сигналов
+    status &= ~TIOCM_DTR; // Отключаем RTS
+    ioctl(fd, TIOCMSET, &status);*/
+    
     // Закрываем файл и COM порт для передачи
     close(fd);
-
-    return 0;
 }
