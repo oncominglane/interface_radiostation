@@ -6,7 +6,7 @@ void buttons_create(std::vector<Button *> &buttons) {
 
     const std::map<const std::string, const std::string> functional_buttons = {{"assets/light.png",      "\x05\x54\x01\x57\xA4"},
                                                                                {"assets/home.png",       "\x05\x81\x01\x57\x21"},
-                                                                               {"assets/power.png",      "\x05\x84\x02\x57\xB5"},
+                                                                               //{"assets/power.png",      "\x05\x84\x02\x57\xB5"},
                                                                                {"assets/emergency.png",  "\x05\x94\x01\x57\xED"},
                                                                                {"assets/PTT.png",        "ptt"                 }};
 
@@ -19,8 +19,10 @@ void buttons_create(std::vector<Button *> &buttons) {
 
     int               signal_button_number     = 0;
     const std::string signal_button_asset      = "assets/point.png";
-    const std::string signal_button_commands[] = {"\x05\x83\x02\x57\x7A", "\x05\x89\x02\x57\x24", "\x05\x84\x02\x57\xB5",
+
+    const std::string signal_button_commands[] = {"\x05\x83\x02\x57\x7A", "\x05\x89\x02\x57\x24", //"\x05\x84\x02\x57\xB5",
                                                   "\x05\x8A\x02\x57\xB4", "\x05\x85\x02\x57\xC5"};
+
 
     offset.y -= button_offset;
     for (const auto &signal_button_command : signal_button_commands)
