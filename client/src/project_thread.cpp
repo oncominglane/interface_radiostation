@@ -1,10 +1,3 @@
-#include <vector>
-#include <map>
-#include <thread>
-#include <iostream>
-#include <functional>
-#include <atomic>
-
 #include <X11/Xlib.h>
 #undef None
 
@@ -15,10 +8,12 @@
 
 #include "config.h"
 
+#include <thread>
+#include <atomic>
+
 bool __listener_thread_running = true;
 
-unsigned char *buffer = (unsigned char *)malloc(BUFFER_SIZE * sizeof(*buffer));  // Выделение памяти для буфера
-
+std::thread ethernetThread;
 // Функция прослушивания Ethernet соединения
 void ethernetListener(std::vector<std::string> *texts) {
     while (__listener_thread_running) {
@@ -31,12 +26,18 @@ void ethernetListener(std::vector<std::string> *texts) {
     }
 }
 
+unsigned char *buffer = (unsigned char *)malloc(BUFFER_SIZE * sizeof(*buffer));  // Выделение памяти для буфера
+
+// Флаг для управления завершением аудиопередачи
+std::atomic<bool> audio_transmit(false);
+std::thread audioThread;
+
 // Функция передачи АУДИО
 void audio(unsigned char *buffer) {
-    audioTxEth(buffer);
-    free(buffer);
+    while (audio_transmit) {
+        audioTxEth(buffer, audio_transmit);
+    }
 }
-
 
 int main() {
     XInitThreads();
@@ -52,11 +53,9 @@ int main() {
     buttons_create(buttons);
 
     std::vector<std::string> texts;
-    sf::Thread               ethernetThread(&ethernetListener, &texts);
-    ethernetThread.launch();
+    ethernetThread = std::thread(ethernetListener, &texts);
 
-    sf::Thread               audioThread(&audio, buffer);
-    bool audio_transmit = false;
+
     sf::Font font;
     font.loadFromFile("assets/troika.otf");
 
@@ -71,20 +70,28 @@ int main() {
                     button->change_color(sf::Color::White);
 
                     if (button->isMouseOver(window)) {  
+                        if (button->m_command == "ptt") {
+                            if (!audio_transmit) { // Проверяем, не идет ли передача
+                                audio_transmit = true;
+                                audioThread = std::thread(audioTxEth, buffer, std::ref(audio_transmit));  // Передаем флаг по ссылке
+                            }
+                        }
                         // FIXME Get coordinartes from event not from window directly
                         // const std::string command = button->m_command;
-                        if (button->m_command == "ptt") {
-                            audio_transmit = true;
-                            audioThread.launch();
-                        }
                         else
-                            transmit_eth(button->m_command);
+                           transmit_eth(button->m_command);
                     }
                 }
             }
 
-            if ((event.type == sf::Event::MouseButtonReleased) and (audio_transmit))
-                audioThread.terminate();
+            if (event.type == sf::Event::MouseButtonReleased) {
+                if (audio_transmit) {
+                    audio_transmit = false; // Устанавливаем флаг завершения
+                    if (audioThread.joinable()) {
+                        audioThread.join(); // Дожидаемся завершения потока
+                    }
+                }
+            }
 
 
             window.clear(sf::Color::Black);
@@ -116,10 +123,18 @@ int main() {
         }
     }
 
+    if (audio_transmit) {
+        audio_transmit = false;
+        if (audioThread.joinable()) {
+            audioThread.join();
+        }
+    }
+
+    if (ethernetThread.joinable()) 
+        ethernetThread.join();
+
     for (auto &button : buttons)
         delete button;
-
-    ethernetThread.terminate();
     free(buffer);
     return 0;
 }

@@ -3,6 +3,14 @@
 #include <cmath>
 #include <csignal>
 #include <iostream>
+#include <cstring>
+#include <string>
+#include <fstream>
+#include <vector>
+#include <map>
+#include <thread>
+#include <functional>
+#include <atomic>
 
 #include <time.h>
 #include <stdio.h>
@@ -14,21 +22,17 @@
 #include <errno.h>
 #include <dirent.h>
 #include <pthread.h>
-#include <arpa/inet.h>
-
-#include <cstring>
-#include <string>
-#include <fstream>
 
 #include <sys/types.h>
 #include <sys/socket.h>
 #include <sys/ioctl.h>
 #include <netinet/in.h>
-
+#include <arpa/inet.h>
 
 #include <alsa/asoundlib.h>
 #include <alsa/asoundlib.h>
 #include <alsa/pcm.h>
+
 
 #define DEV_DIR "/dev"
 #define BUFFER_SIZE 1024
@@ -38,6 +42,6 @@
 
 
 int transmit_eth(std::string message1);
-void audioTxEth(unsigned char * buffer);
+void audioTxEth(unsigned char *buffer, const std::atomic<bool>& audio_transmit);
 
 std::string receive_eth();

@@ -1,10 +1,11 @@
 #include "TxRxEth.h"
+#include <atomic> 
 
 //#define SERVER_IP "192.168.1.112" // IP адрес Митино
 #define SERVER_IP "192.168.0.119" // IP адрес дом
 //#define SERVER_IP "10.10.1.62"  // IP адрес работа
 
-void audioTxEth(unsigned char *buffer) {
+void audioTxEth(unsigned char *buffer, const std::atomic<bool>& audio_transmit)  {
     // Параметры для захвата звука
     snd_pcm_t *capture_handle;
     snd_pcm_hw_params_t *hw_params;
@@ -28,6 +29,16 @@ void audioTxEth(unsigned char *buffer) {
     serv_addr.sin_family = AF_INET;
     serv_addr.sin_port = htons(PORT);
     serv_addr.sin_addr.s_addr = inet_addr(SERVER_IP); // IP
+
+
+
+
+
+    int opt = 1;
+    setsockopt(sockfd, SOL_SOCKET, SO_REUSEADDR, &opt, sizeof(opt));
+
+
+
 
     if (connect(sockfd, (struct sockaddr *)&serv_addr, sizeof(serv_addr)) < 0) {
         perror("Connection failed");
@@ -130,9 +141,6 @@ void audioTxEth(unsigned char *buffer) {
     snd_pcm_hw_params_free(hw_params);
 
 
-    //snd_pcm_hw_params_get_buffer_size(hw_params, &local_buffer);
-    //snd_pcm_hw_params_get_period_size(hw_params, &local_periods, 0);
-
     printf("Buffer size: %lu, Period size: %lu\n", local_buffer, local_periods);
 
     // Подготовка устройства к воспроизведению
@@ -145,29 +153,16 @@ void audioTxEth(unsigned char *buffer) {
 
 
    // Основной цикл для захвата и передачи данных
-    for (int j = 0; j < 1024*16; j++) {
+    while (audio_transmit) {
         // Захватываем аудиоданные
-        //printf("[FLOPS]: Buffer = `%p` and size = `%llu`;\n", buffer, BUFFER_SIZE / (channels * 2));
-
+        
         int frames = snd_pcm_readi(capture_handle, buffer, BUFFER_SIZE / (channels * 2));
-        //system("gpio readall > gpio.txt");
-        //printf("sus6.5\n");
+        
         if (frames < 0) {
             fprintf(stderr, "Read error: %s\n", snd_strerror(frames));  // Выводим точную ошибку ALSA
             snd_pcm_prepare(capture_handle);  // Попробуем восстановить поток
             continue;
         }
-
-
-        /*for (unsigned int i = 0; i < BUFFER_SIZE; i++) {
-		buffer[i] = 10000 * sinf(2 * M_PI * 200 * ((float)i / sampleRate));
-	    }*/                                                                 //Генерация синусоиды
-
-        /*for (int i = 0; i < BUFFER_SIZE; i++) {
-            printf("%02x", buffer[i]);
-            if (((i + 1) % 16) == 0)
-                printf("\n");
-        }*/                                           //Отладка
     
         // Передаем данные по сети
         //ssize_t bytes_sent = send(sockfd, buffer, frames * channels * 2, 0);
