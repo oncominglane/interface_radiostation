@@ -17,6 +17,8 @@
 
 bool __listener_thread_running = true;
 
+unsigned char *buffer = (unsigned char *)malloc(BUFFER_SIZE * sizeof(*buffer));  // Выделение памяти для буфера
+
 // Функция прослушивания Ethernet соединения
 void ethernetListener(std::vector<std::string> *texts) {
     while (__listener_thread_running) {
@@ -28,6 +30,13 @@ void ethernetListener(std::vector<std::string> *texts) {
         std::cout << "}\n\n[DATA]: `" << data << "`\n[TEXTS]: `" << texts << "`\n";
     }
 }
+
+// Функция передачи АУДИО
+void audio(unsigned char *buffer) {
+    audioTxEth(buffer);
+    free(buffer);
+}
+
 
 int main() {
     XInitThreads();
@@ -46,6 +55,8 @@ int main() {
     sf::Thread               ethernetThread(&ethernetListener, &texts);
     ethernetThread.launch();
 
+    sf::Thread               audioThread(&audio, buffer);
+    bool audio_transmit = false;
     sf::Font font;
     font.loadFromFile("assets/troika.otf");
 
@@ -59,12 +70,22 @@ int main() {
                 for (const auto &button : buttons) {
                     button->change_color(sf::Color::White);
 
-                    if (button->isMouseOver(window)) {  // FIXME Get coordinartes from event not from window directly
-                        button->change_color(sf::Color::Green);
-                        transmit_eth(button->m_command);
+                    if (button->isMouseOver(window)) {  
+                        // FIXME Get coordinartes from event not from window directly
+                        // const std::string command = button->m_command;
+                        if (button->m_command == "ptt") {
+                            audio_transmit = true;
+                            audioThread.launch();
+                        }
+                        else
+                            transmit_eth(button->m_command);
                     }
                 }
             }
+
+            if ((event.type == sf::Event::MouseButtonReleased) and (audio_transmit))
+                audioThread.terminate();
+
 
             window.clear(sf::Color::Black);
 
@@ -99,6 +120,6 @@ int main() {
         delete button;
 
     ethernetThread.terminate();
-
+    free(buffer);
     return 0;
 }

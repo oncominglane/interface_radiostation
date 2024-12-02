@@ -29,7 +29,7 @@ std::string receive_eth() {
     serv_addr.sin_port        = htons(PORT);
 
     // Привязываем сокет к адресу и порту
-    if (bind(sockfd, (struct sockaddr *)&serv_addr, sizeof(serv_addr)) < 0) {
+    if (bind(sockfd, (struct sockaddr *) &serv_addr, sizeof(serv_addr)) < 0) {
         std::cerr << "Error on binding" << std::endl;
         std::exit(1);
     }

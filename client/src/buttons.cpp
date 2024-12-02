@@ -4,11 +4,11 @@
 void buttons_create(std::vector<Button *> &buttons) {
     sf::Vector2f offset(left_border, bottom_border);
 
-    const std::map<const std::string, const std::string> functional_buttons = {{"assets/light.png", "\x05\x54\x01\x57\xA4"},
-                                                                               {"assets/home.png", "\x05\x81\x01\x57\x21"},
-                                                                               {"assets/power.png", "\x05\x84\x02\x57\xB5"},
-                                                                               {"assets/emergency.png", "\x05\x94\x01\x57\xED"},
-                                                                               {"assets/PTT.png", "ptt"}};
+    const std::map<const std::string, const std::string> functional_buttons = {{"assets/light.png",      "\x05\x54\x01\x57\xA4"},
+                                                                               {"assets/home.png",       "\x05\x81\x01\x57\x21"},
+                                                                               {"assets/power.png",      "\x05\x84\x02\x57\xB5"},
+                                                                               {"assets/emergency.png",  "\x05\x94\x01\x57\xED"},
+                                                                               {"assets/PTT.png",        "ptt"                 }};
 
     for (const auto &[button_asset, button_command] : functional_buttons)
     {  // Creates functional buttons coloumn at the left border
