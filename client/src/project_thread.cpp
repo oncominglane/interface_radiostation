@@ -5,17 +5,24 @@
 #include "screen.h"
 #include "message.h"
 #include "TxRxEth.h"
+#include "lamp.h" 
 
 #include "config.h"
 
 #include <thread>
 #include <atomic>
 
-bool __listener_thread_running = true;
 
+
+// Вектор лампочек
+std::vector<Lamp> lamps;
+
+
+
+bool __listener_thread_running = true;
 std::thread ethernetThread;
-// Функция прослушивания Ethernet соединения
-void ethernetListener(std::vector<std::string> *texts) {
+
+void ethernetListener(std::vector<std::string> *texts) {// Функция прослушивания Ethernet соединения
     while (__listener_thread_running) {
         std::string data = receive_eth();
 
@@ -28,16 +35,15 @@ void ethernetListener(std::vector<std::string> *texts) {
 
 unsigned char *buffer = (unsigned char *)malloc(BUFFER_SIZE * sizeof(*buffer));  // Выделение памяти для буфера
 
-// Флаг для управления завершением аудиопередачи
-std::atomic<bool> audio_transmit(false);
+std::atomic<bool> audio_transmit(false); // Флаг для управления завершением аудиопередачи
 std::thread audioThread;
 
-// Функция передачи АУДИО
-void audio(unsigned char *buffer) {
+void audio(unsigned char *buffer) { // Функция передачи АУДИО
     while (audio_transmit) {
         audioTxEth(buffer, audio_transmit);
     }
 }
+
 
 int main() {
     XInitThreads();
@@ -59,6 +65,24 @@ int main() {
     sf::Font font;
     font.loadFromFile("assets/troika.otf");
 
+
+
+
+
+
+
+     // Создаем лампочки
+    float lampRadius = 50.0f;
+    float startX = resolution_x - 100.0f;  // Правый край экрана
+    float startY = 100.0f;
+    float lampOffset = 150.0f;
+    lamps.emplace_back(sf::Vector2f(startX, startY), lampRadius, sf::Color::Black);
+    lamps.emplace_back(sf::Vector2f(startX, startY + lampOffset), lampRadius, sf::Color::Black);
+    lamps.emplace_back(sf::Vector2f(startX, startY + 2 * lampOffset), lampRadius, sf::Color::Black);
+
+
+
+
     while (window.isOpen()) {
         sf::Event event;
         while (window.pollEvent(event)) {
@@ -72,12 +96,12 @@ int main() {
                     if (button->isMouseOver(window)) {  
                         if (button->m_command == "ptt") {
                             if (!audio_transmit) { // Проверяем, не идет ли передача
+                                lamps[0].changeColor(sf::Color::Red);
                                 audio_transmit = true;
                                 audioThread = std::thread(audioTxEth, buffer, std::ref(audio_transmit));  // Передаем флаг по ссылке
                             }
                         }
                         // FIXME Get coordinartes from event not from window directly
-                        // const std::string command = button->m_command;
                         else
                            transmit_eth(button->m_command);
                     }
@@ -90,6 +114,7 @@ int main() {
                     if (audioThread.joinable()) {
                         audioThread.join(); // Дожидаемся завершения потока
                     }
+                    lamps[0].changeColor(sf::Color::Black);
                 }
             }
 
@@ -119,10 +144,20 @@ int main() {
                 y_offset += text_offset;
             }
 
+
+
+            // Отрисовка лампочек
+            for (auto &lamp : lamps) {
+                lamp.draw(window);
+            }
+
+
+
             window.display();
         }
     }
-
+    
+    // завершаем поток передачи звука
     if (audio_transmit) {
         audio_transmit = false;
         if (audioThread.joinable()) {
@@ -130,6 +165,7 @@ int main() {
         }
     }
 
+    //  завершаем поток передачи по Ethernet
     if (ethernetThread.joinable()) 
         ethernetThread.join();
 

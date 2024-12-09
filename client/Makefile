@@ -8,7 +8,7 @@ DBGFLAGS = -g -O0 -Wall -Wextra -D_DEBUG -D_SHOW_STACK_TRACE
 CXXFLAGS = $(DBGFLAGS) -Iinclude -std=c++17 -pthread 
 LDFLAGS  = -lsfml-graphics -lsfml-window -lsfml-system -lX11 -lasound
 
-SRC = TxEth.cpp RxEth.cpp buttons.cpp message.cpp audioTxEth.cpp project_thread.cpp
+SRC = project_thread.cpp buttons.cpp lamp.cpp message.cpp TxEth.cpp RxEth.cpp audioTxEth.cpp 
 OBJ = $(SRC:.cpp=.o)
 
 .PHONY: all clean prepare

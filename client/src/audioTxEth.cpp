@@ -2,8 +2,8 @@
 #include <atomic> 
 
 //#define SERVER_IP "192.168.1.112" // IP адрес Митино
-#define SERVER_IP "192.168.0.119" // IP адрес дом
-//#define SERVER_IP "10.10.1.62"  // IP адрес работа
+//#define SERVER_IP "192.168.0.119" // IP адрес дом
+#define SERVER_IP "10.10.1.62"  // IP адрес работа
 
 void audioTxEth(unsigned char *buffer, const std::atomic<bool>& audio_transmit)  {
     // Параметры для захвата звука

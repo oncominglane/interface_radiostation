@@ -33,8 +33,8 @@ void buttons_create(std::vector<Button *> &buttons) {
                                            std::to_string(++signal_button_number)));
     }
 
-    const std::map<const std::string, const std::string> arrow_buttons = {{"assets/arrow_.png", "\x05\x04\x01\x57\xF5"},
-                                                                          {"assets/arrow.png", "\x05\x04\xFF\x57\xCC"}};
+    const std::map<const std::string, const std::string> arrow_buttons = { {"assets/arrow.png", "\x05\x04\xFF\x57\xCC"},
+                                                                            {"assets/arrow.png", "\x05\x04\x01\x57\xF5"}};
 
     for (const auto &[button_asset, button_command] : arrow_buttons)
     {  // Creates arrow buttons at the end of signal buttons row

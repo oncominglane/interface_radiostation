@@ -1,8 +1,8 @@
 #include "TxRxEth.h"
 
 //#define SERVER_IP "192.168.1.1"  // IP адрес сервера       ноутбук
-//#define SERVER_IP "10.10.1.62"  // IP адрес сервера      малинка
-#define SERVER_IP "192.168.0.119"  // IP адрес сервера       малинка дома
+#define SERVER_IP "10.10.1.62"  // IP адрес сервера      малинка
+//#define SERVER_IP "192.168.0.119"  // IP адрес сервера       малинка дома
 
 #define SERVER_PORT 5678  // Порт сервера        ноутбук и малинка
 
