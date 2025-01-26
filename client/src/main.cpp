@@ -1,13 +1,14 @@
 #include <X11/Xlib.h>
 #undef None
 
+#include "config.h"
 #include "buttons.h"
+#include "lamps.h" 
 #include "screen.h"
 #include "message.h"
-#include "TxRxEth.h"
-#include "lamp.h" 
 
-#include "config.h"
+#include "TxRxEth.h"
+
 
 #include <thread>
 #include <atomic>
@@ -65,22 +66,8 @@ int main() {
     sf::Font font;
     font.loadFromFile("assets/troika.otf");
 
-
-
-
-
-
-
-     // Создаем лампочки
-    float lampRadius = 50.0f;
-    float startX = resolution_x - 100.0f;  // Правый край экрана
-    float startY = 100.0f;
-    float lampOffset = 150.0f;
-    lamps.emplace_back(sf::Vector2f(startX, startY), lampRadius, sf::Color::Black);
-    lamps.emplace_back(sf::Vector2f(startX, startY + lampOffset), lampRadius, sf::Color::Black);
-    lamps.emplace_back(sf::Vector2f(startX, startY + 2 * lampOffset), lampRadius, sf::Color::Black);
-
-
+    // Создаем лампочки
+    lamp_create(lamps);  // Вызов функции для создания лампочек
 
 
     while (window.isOpen()) {
@@ -145,13 +132,10 @@ int main() {
             }
 
 
-
             // Отрисовка лампочек
             for (auto &lamp : lamps) {
                 lamp.draw(window);
             }
-
-
 
             window.display();
         }

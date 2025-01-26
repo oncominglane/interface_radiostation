@@ -30,3 +30,5 @@ private:
     sf::Color      m_color;
     sf::CircleShape m_circle;
 };
+
+void lamp_create(std::vector<Lamp> &lamps);

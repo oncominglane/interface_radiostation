@@ -1,4 +1,4 @@
-#include "TxRxEth.h"
+#include "TxRx.h"
 #include <alsa/pcm.h>
 #include <cerrno>
 #include <cstdlib>
@@ -17,7 +17,7 @@ void audioRxEth(unsigned char *buffer) {
     unsigned int resample = 1;
     unsigned int sampleRate = 44100;
     long int dataCapacity = 0;
-    int channels = 2;
+    int channels = 1;
     snd_pcm_uframes_t local_buffer = BUFFER_SIZE;
     snd_pcm_uframes_t local_periods = PERIODS;
     socklen_t clilen;
@@ -50,7 +50,7 @@ void audioRxEth(unsigned char *buffer) {
     }
 
     // Открываем PCM устройство
-    if (snd_pcm_open(&playback_handle, "hw:0,0", SND_PCM_STREAM_PLAYBACK, 0) < 0) {
+    if (snd_pcm_open(&playback_handle, "plughw:0,0", SND_PCM_STREAM_PLAYBACK, 0) < 0) {
         perror("Cannot open audio device");
         close(sockfd);
         return;
@@ -212,8 +212,8 @@ void audioRxEth(unsigned char *buffer) {
     
     */
 
-    system("gpio -g mode 20 out");
-    system("gpio -g write 20 1");
+    //system("gpio -g mode 20 out");
+    //system("gpio -g write 20 1");
 
     // Основной цикл для приёма и воспроизведения звуковых данных
     for (int j = 0; j < 1024*32; j++) {
@@ -231,7 +231,7 @@ void audioRxEth(unsigned char *buffer) {
             printf("%02x", buffer[i]);
             if (((i + 1) % 16) == 0)
                 printf("\n");
-        }*/                                           //Отладка 
+        } */                                       //Отладка 
 
         int err = 0;    
         int frames = n / (channels * 2);
@@ -253,7 +253,7 @@ void audioRxEth(unsigned char *buffer) {
     }
 
     // Освобождаем ресурсы
-    system("gpio -g write 20 0");
+    //system("gpio -g write 20 0");
     snd_pcm_drop(playback_handle);
     snd_pcm_close(playback_handle);
     close(newsockfd);
