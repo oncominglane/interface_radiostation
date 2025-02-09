@@ -36,12 +36,12 @@
 
 #define DEV_DIR "/dev"
 #define BUFFER_SIZE 1024
-#define PERIODS 512;
+#define PERIODS 512
 #define TTY "ttyAMA"
 #define PORT 5678
 
 
 int transmit_eth(std::string message1);
-void audioTxEth(unsigned char *buffer, const std::atomic<bool>& audio_transmit);
-
+void audioTxEth(unsigned char *buffer, std::atomic<bool>& audio_transmit);
+void audioRxEth(unsigned char *buffer, std::atomic<bool>& audio_receive );
 std::string receive_eth();

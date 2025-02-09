@@ -9,45 +9,99 @@
 
 #include "TxRxEth.h"
 
-
 #include <thread>
 #include <atomic>
+#include <mutex>
 
-
-
-// Вектор лампочек
-std::vector<Lamp> lamps;
-
-
+void customTerminate() {
+    std::cerr << "Custom terminate handler called!" << std::endl;
+    std::abort();
+}
 
 bool __listener_thread_running = true;
 std::thread ethernetThread;
 
 void ethernetListener(std::vector<std::string> *texts) {// Функция прослушивания Ethernet соединения
-    while (__listener_thread_running) {
+    try {
+        while (__listener_thread_running) {
         std::string data = receive_eth();
 
         std::cout << "[RECEIVE]: {" << data << std::endl;
         message(data, texts);
 
         std::cout << "}\n\n[DATA]: `" << data << "`\n[TEXTS]: `" << texts << "`\n";
+        }
+    } catch (const std::exception& e) {
+        std::cerr << "Exception caught in ethernetListener: " << e.what() << std::endl;
+        __listener_thread_running = false;
+    } catch (...) {
+        std::cerr << "Unknown exception in ethernetListener!" << std::endl;
+        __listener_thread_running = false;
     }
 }
 
-unsigned char *buffer = (unsigned char *)malloc(BUFFER_SIZE * sizeof(*buffer));  // Выделение памяти для буфера
+std::vector<unsigned char> buffer(BUFFER_SIZE); 
+std::mutex buffer_mutex;                // Мьютекс для защиты buffer
 
-std::atomic<bool> audio_transmit(false); // Флаг для управления завершением аудиопередачи
-std::thread audioThread;
+std::atomic<bool> audio_receive(true);  // Флаг для управления потоком приёма
+std::atomic<bool> audio_transmit(false); // Флаг для передачи
 
-void audio(unsigned char *buffer) { // Функция передачи АУДИО
-    while (audio_transmit) {
-        audioTxEth(buffer, audio_transmit);
+std::thread audioRxThread;
+std::thread audioTxThread;
+
+void audioReceiver(std::vector<unsigned char>& buffer, std::atomic<bool>& running) {
+    try { while (running) {
+        std::this_thread::sleep_for(std::chrono::milliseconds(10));
+        std::vector<unsigned char> localBuffer;
+        {
+            std::lock_guard<std::mutex> lock(buffer_mutex);
+            localBuffer = buffer; // Копируем данные
+        }
+        try {
+            audioRxEth(localBuffer.data(), running);
+        } catch (const std::exception& e) {
+            std::cerr << "audioRxEth exception: " << e.what() << std::endl;
+            throw; // Либо обработать, либо передать дальше
+        }
+    }
+     } catch (const std::exception& e) {
+        std::cerr << "Exception in audioReceiver: " << e.what() << std::endl;
+        running = false;
+    } catch (...) {
+        std::cerr << "Unknown exception in audioReceiver!" << std::endl;
+        running = false;
+    }
+}
+
+void audioTransmitter(std::vector<unsigned char>& buffer, std::atomic<bool>& running) {
+    try {while (running) {
+        std::vector<unsigned char> localBuffer;
+        {
+            std::lock_guard<std::mutex> lock(buffer_mutex);
+            localBuffer = buffer; // Копируем данные
+        }
+        audioTxEth(localBuffer.data(), running);
+        }
+    } catch (const std::exception& e) {
+        std::cerr << "Exception in audioTransmitter: " << e.what() << std::endl;
+        running = false;
+    } catch (...) {
+        std::cerr << "Unknown exception in audioTransmitter!" << std::endl;
+        running = false;
     }
 }
 
 
+
+  
 int main() {
+    std::set_terminate(customTerminate);
+    try{
     XInitThreads();
+
+    // Запускаем поток приёма звука
+    audioRxThread = std::thread(audioReceiver, std::ref(buffer), std::ref(audio_receive));
+
 
     sf::RenderWindow window(sf::VideoMode(resolution_x, resolution_y), "Interface Radiostation Project");
     window.setActive(false);
@@ -56,18 +110,39 @@ int main() {
         sf::Vector2f(left_border + button_offset, bottom_border),  // TODO Make vector and use it in texts positioning
         sf::Vector2f(main_screen_width, main_screen_height), "assets/white.png", "Main Screen");
 
+    // Вектор лампочек
+    std::vector<Lamp> lamps;
+
+
     std::vector<Button *> buttons;
     buttons_create(buttons);
 
     std::vector<std::string> texts;
-    ethernetThread = std::thread(ethernetListener, &texts);
+
+    /*try {
+        ethernetThread = std::thread(ethernetListener, &texts);
+        pthread_setname_np(ethernetThread.native_handle(), "EthernetThread");
+    } catch (const std::exception& e) {
+        std::cerr << "Exception while starting ethernetThread: " << e.what() << std::endl;
+    } catch (...) {
+        std::cerr << "Unknown exception while starting ethernetThread!" << std::endl;
+    }*/
+
+    
 
 
     sf::Font font;
-    font.loadFromFile("assets/troika.otf");
+    try {
+        if (!font.loadFromFile("assets/troika.otf")) {
+            throw std::runtime_error("Failed to load font!");
+        }
+    } catch (const std::exception& e) {
+        std::cerr << "Font loading error: " << e.what() << std::endl;
+        return EXIT_FAILURE;
+    }
 
     // Создаем лампочки
-    lamp_create(lamps);  // Вызов функции для создания лампочек
+    lamp_create(lamps);  
 
 
     while (window.isOpen()) {
@@ -84,8 +159,9 @@ int main() {
                         if (button->m_command == "ptt") {
                             if (!audio_transmit) { // Проверяем, не идет ли передача
                                 lamps[0].changeColor(sf::Color::Red);
+                                audio_receive = false; // Останавливаем приём звука
                                 audio_transmit = true;
-                                audioThread = std::thread(audioTxEth, buffer, std::ref(audio_transmit));  // Передаем флаг по ссылке
+                                audioTxThread = std::thread(audioTransmitter, std::ref(buffer), std::ref(audio_transmit));
                             }
                         }
                         // FIXME Get coordinartes from event not from window directly
@@ -98,9 +174,13 @@ int main() {
             if (event.type == sf::Event::MouseButtonReleased) {
                 if (audio_transmit) {
                     audio_transmit = false; // Устанавливаем флаг завершения
-                    if (audioThread.joinable()) {
-                        audioThread.join(); // Дожидаемся завершения потока
+                    try {
+                        if (audioTxThread.joinable()) audioTxThread.join();
+                    } catch (const std::exception& e) {
+                        std::cerr << "Exception while joining audioRxThread: " << e.what() << std::endl;
                     }
+                    
+                    audio_receive = true; // Возобновляем приём звука
                     lamps[0].changeColor(sf::Color::Black);
                 }
             }
@@ -139,22 +219,46 @@ int main() {
 
             window.display();
         }
-    }
-    
-    // завершаем поток передачи звука
-    if (audio_transmit) {
-        audio_transmit = false;
-        if (audioThread.joinable()) {
-            audioThread.join();
-        }
-    }
+       
 
-    //  завершаем поток передачи по Ethernet
-    if (ethernetThread.joinable()) 
-        ethernetThread.join();
+
+   } 
+    // Завершение потоков корректно
+        audio_receive = false;
+        try {
+        if (!audio_receive) {
+            if (audioRxThread.joinable()) audioRxThread.join();
+        }
+        }catch (const std::exception& e) {
+                        std::cerr << "Exception while joining audioRxThread: " << e.what() << std::endl;
+                    }
+        
+        try {
+        if (!audio_transmit) {
+            if (audioTxThread.joinable()) audioTxThread.join();
+        }
+        }catch (const std::exception& e) {
+                        std::cerr << "Exception while joining audioTxThread: " << e.what() << std::endl;
+                    }
+
+        /*try {
+        if (ethernetThread.joinable()) ethernetThread.join();
+        }catch (const std::exception& e) {
+                        std::cerr << "Exception while joining ethernetThread: " << e.what() << std::endl;
+                    }
+        */
 
     for (auto &button : buttons)
         delete button;
-    free(buffer);
+
+//FIXME удаление лампочек 
+
+    } catch (const std::exception& e) {
+        std::cerr << "Exception caught in main: " << e.what() << std::endl;
+        return EXIT_FAILURE;
+    } catch (...) {
+        std::cerr << "Unknown exception caught in main!" << std::endl;
+        return EXIT_FAILURE;
+    }
     return 0;
 }

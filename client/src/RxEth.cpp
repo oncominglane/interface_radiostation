@@ -3,6 +3,7 @@
 #define PORT 5678  //ноутбук и малинка
 
 std::string receive_eth() {
+    try {
     int       sockfd, newsockfd;
     socklen_t clilen;
 
@@ -35,7 +36,7 @@ std::string receive_eth() {
     }
 
     // Слушаем входящие соединения
-    listen(sockfd, 5);
+    listen(sockfd, 5);      
     clilen = sizeof(cli_addr);
 
     // Принимаем входящее соединение
@@ -69,4 +70,8 @@ std::string receive_eth() {
     close(sockfd);
 
     return str;
+     } catch (const std::exception& e) {
+        std::cerr << "receive_eth exception: " << e.what() << std::endl;
+        throw;
+    }
 }

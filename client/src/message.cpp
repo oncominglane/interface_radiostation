@@ -1,8 +1,10 @@
 #include <regex>
-#include <string_view>
+
 
 #include "message.h"
 #include "screen.h"
+#include <string_view>
+
 
 void message(std::string &data, std::vector<std::string> *texts) {
     (*texts).clear();

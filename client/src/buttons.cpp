@@ -6,7 +6,6 @@ void buttons_create(std::vector<Button *> &buttons) {
 
     const std::map<const std::string, const std::string> functional_buttons = {{"assets/light.png",      "\x05\x54\x01\x57\xA4"},
                                                                                {"assets/home.png",       "\x05\x81\x01\x57\x21"},
-                                                                               //{"assets/power.png",      "\x05\x84\x02\x57\xB5"},
                                                                                {"assets/emergency.png",  "\x05\x94\x01\x57\xED"},
                                                                                {"assets/PTT.png",        "ptt"                 }};
 
@@ -33,8 +32,8 @@ void buttons_create(std::vector<Button *> &buttons) {
                                            std::to_string(++signal_button_number)));
     }
 
-    const std::map<const std::string, const std::string> arrow_buttons = { {"assets/arrow.png", "\x05\x04\xFF\x57\xCC"},
-                                                                            {"assets/arrow.png", "\x05\x04\x01\x57\xF5"}};
+    const std::map<const std::string, const std::string> arrow_buttons = { {"assets/arrow_.png", "\x05\x04\xFF\x57\xCC"},
+                                                                           {"assets/arrow.png", "\x05\x04\x01\x57\xF5"}};
 
     for (const auto &[button_asset, button_command] : arrow_buttons)
     {  // Creates arrow buttons at the end of signal buttons row

@@ -1,9 +1,9 @@
-#include "TxRx.h"
+#include "TxRxEth.h"
 #include <alsa/pcm.h>
 #include <cerrno>
 #include <cstdlib>
 
-void audioRxEth(unsigned char *buffer) {
+void audioRxEth(unsigned char *buffer, std::atomic<bool>& audio_receive) {
     //Параметры для захвата звука
     snd_pcm_t *playback_handle;
     snd_pcm_hw_params_t *hw_params;
@@ -36,18 +36,19 @@ void audioRxEth(unsigned char *buffer) {
     serv_addr.sin_addr.s_addr = INADDR_ANY;
     serv_addr.sin_port = htons(PORT);
 
-    if (bind(sockfd, (struct sockaddr *)&serv_addr, sizeof(serv_addr)) < 0) {
-        perror("Bind error");
-        return;
+
+
+
+
+    int bindResult = bind(sockfd, (struct sockaddr *)&serv_addr, sizeof(serv_addr));
+    if (bindResult < 0) {
+        std::cerr << "Error on binding: " << strerror(errno) << " (errno: " << errno << ")" << std::endl;
+        throw std::runtime_error("Binding failed.");
     }
+
 
     listen(sockfd, 5);
     clilen = sizeof(cli_addr);
-
-    if ((newsockfd = accept(sockfd, (struct sockaddr *)&cli_addr, &clilen)) < 0) {
-        perror("Accept error");
-        return;
-    }
 
     // Открываем PCM устройство
     if (snd_pcm_open(&playback_handle, "plughw:0,0", SND_PCM_STREAM_PLAYBACK, 0) < 0) {
@@ -134,6 +135,7 @@ void audioRxEth(unsigned char *buffer) {
         return;
     }
 
+
     if (snd_pcm_hw_params(playback_handle, hw_params) < 0) {
         perror("Cannot set hardware parameters");
         snd_pcm_hw_params_free(hw_params);
@@ -145,115 +147,61 @@ void audioRxEth(unsigned char *buffer) {
     // Освобождение выделенной памяти
     snd_pcm_hw_params_free(hw_params);
 
-    //snd_pcm_hw_params_get_buffer_size(hw_params, &local_buffer);
-    //snd_pcm_hw_params_get_period_size(hw_params, &local_periods, 0);
 
     printf("Buffer size: %lu, Period size: %lu\n", local_buffer, local_periods);
 
-    /*if (snd_pcm_sw_params_malloc(&sw_params) < 0) {
-        perror("Cannot allocate software parameters");
-        snd_pcm_close(playback_handle);
-        close(sockfd);
-        return;
-    }
-
-    if (snd_pcm_sw_params_current (playback_handle, sw_params) < 0) {
-        perror("Cannot configure software parameters on this PCM device");
-        snd_pcm_close(playback_handle);
-        close(sockfd);
-        return;
-    }
-
-    if (snd_pcm_sw_params_set_start_threshold(playback_handle, sw_params, local_buffer/2) < 0) {
-        perror("Cannot set start threshold");
-        snd_pcm_close(playback_handle);
-        close(sockfd);
-        return;
-    }
-
-    if (snd_pcm_sw_params_set_avail_min(playback_handle, sw_params, local_periods) < 0) {
-        perror("Cannot set avail min");
-        snd_pcm_close(playback_handle);
-        close(sockfd);
-        return;
-    }
-
-    if (snd_pcm_sw_params(playback_handle, sw_params) < 0) {
-            perror("Cannot set software parameters");
-            snd_pcm_hw_params_free(hw_params);
-            snd_pcm_close(playback_handle);
-            close(sockfd);
-            return;
-    }
-
-    snd_pcm_sw_params_free (sw_params);
-    */
-    // Подготовка устройства к воспроизведению
-
-    /*if (snd_async_add_pcm_handler(&pcm_callback, playback_handle, MyCallback, NULL) < 0) {
-            perror("Cannot add async handler");
-            snd_pcm_close(playback_handle);
-            close(sockfd);
-            return;
-    }
     
-    if (snd_pcm_nonblock(playback_handle, 1) < 0) {
-        perror("Cannot set non-blocking mode");
-        snd_pcm_close(playback_handle);
-        return;
-    }
-
-    if (snd_pcm_prepare(playback_handle) < 0) {
-        perror("Cannot prepare audio interface for use");
-        snd_pcm_close(playback_handle);
-        close(sockfd);
-        return;
-    }
+ 
     
-    */
-
-    //system("gpio -g mode 20 out");
-    //system("gpio -g write 20 1");
-
-    // Основной цикл для приёма и воспроизведения звуковых данных
-    for (int j = 0; j < 1024*32; j++) {
-        int n = recv(newsockfd, buffer, BUFFER_SIZE, 0);
-        if (n <= 0) {
-            if (n == 0) {
-                printf("Connection closed by client\n");
-            } else {
-                perror("Receive error");
-            }
-            break;
+    
+    while (1) {
+        if ((newsockfd = accept(sockfd, (struct sockaddr *)&cli_addr, &clilen)) < 0) {
+        perror("Accept error");
+        continue;
         }
 
-        /*for (int i = 0; i < BUFFER_SIZE; i++) {
-            printf("%02x", buffer[i]);
-            if (((i + 1) % 16) == 0)
-                printf("\n");
-        } */                                       //Отладка 
+        printf("Client connected\n");
+        snd_pcm_prepare(playback_handle);
+        // Основной цикл для приёма и воспроизведения звуковых данных
+        while (audio_receive) {
+            int n = recv(newsockfd, buffer, BUFFER_SIZE, 0);
+            if (n <= 0) {
+                if (n == 0) {
+                    printf("Connection closed by client\n");
+                    snd_pcm_drop(playback_handle);
+                    close(newsockfd);
+                    break;
+                } else {
+                    perror("Receive error");
+                    snd_pcm_drop(playback_handle);
+                    close(newsockfd);
+                }
+                break;
+            }
 
-        int err = 0;    
-        int frames = n / (channels * 2);
-        err = snd_pcm_writei(playback_handle, buffer, frames);
-        // Воспроизводим данные с помощью ALSA
-        if (err < 0) {
-            if (err == EPIPE){
-                fprintf(stderr, "Temporary underrun, retrying...\n"); //Обработка, если установлен флаг SND_PCM_NONBLOCK
-                snd_pcm_prepare(playback_handle);
+
+
+            int err = 0;    
+            int frames = n / (channels * 2);
+            err = snd_pcm_writei(playback_handle, buffer, frames);
+            // Воспроизводим данные с помощью ALSA
+            if (err < 0) {
+                if (err == -EPIPE){
+                    fprintf(stderr, "Temporary underrun, retrying...\n"); //Обработка, если установлен флаг SND_PCM_NONBLOCK
+                    snd_pcm_prepare(playback_handle);
+                }
+                if (err == EAGAIN){
+                    fprintf(stderr, "Temporary unavailable, retrying...\n"); 
+                    continue;
+                }
             }
-            if (err == EAGAIN){
-                fprintf(stderr, "Temporary unavailable, retrying...\n"); 
-                continue;
-            }
+            dataCapacity += n;
+            
+            //printf("\ndataCapacity: %ld\n\n", dataCapacity);
         }
-        dataCapacity += n;
-        
-        //printf("\ndataCapacity: %ld\n\n", dataCapacity);
     }
 
     // Освобождаем ресурсы
-    //system("gpio -g write 20 0");
     snd_pcm_drop(playback_handle);
     snd_pcm_close(playback_handle);
     close(newsockfd);
