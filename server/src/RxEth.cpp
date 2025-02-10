@@ -1,8 +1,8 @@
 #include "TxRx.h"
 
-void RxEth(unsigned char * buffer) { 
-    int sockfd, newsockfd;
-    socklen_t clilen;
+void RxEth(unsigned char *buffer) {
+    int                sockfd, newsockfd;
+    socklen_t          clilen;
     struct sockaddr_in serv_addr, cli_addr;
 
     // Создаем сокет
@@ -17,13 +17,13 @@ void RxEth(unsigned char * buffer) {
     setsockopt(sockfd, SOL_SOCKET, SO_REUSEADDR, &optval, sizeof(optval));
 
     // Инициализируем структуру serv_addr
-    memset((char *) &serv_addr, 0, sizeof(serv_addr));
-    serv_addr.sin_family = AF_INET;
+    memset((char *)&serv_addr, 0, sizeof(serv_addr));
+    serv_addr.sin_family      = AF_INET;
     serv_addr.sin_addr.s_addr = INADDR_ANY;
-    serv_addr.sin_port = htons(PORT);
+    serv_addr.sin_port        = htons(PORT);
 
     // Привязываем сокет к адресу и порту
-    if (bind(sockfd, (struct sockaddr *) &serv_addr, sizeof(serv_addr)) < 0) {
+    if (bind(sockfd, (struct sockaddr *)&serv_addr, sizeof(serv_addr)) < 0) {
         perror("Error on binding");
         exit(1);
     }
@@ -33,7 +33,7 @@ void RxEth(unsigned char * buffer) {
     clilen = sizeof(cli_addr);
 
     // Принимаем входящее соединение
-    newsockfd = accept(sockfd, (struct sockaddr *) &cli_addr, &clilen);
+    newsockfd = accept(sockfd, (struct sockaddr *)&cli_addr, &clilen);
 
     if (newsockfd < 0) {
         perror("Error on accept");
@@ -46,8 +46,8 @@ void RxEth(unsigned char * buffer) {
         perror("Error reading from socket");
         exit(1);
     }
-    
+
     // Закрываем сокеты
     close(newsockfd);
     close(sockfd);
-}   
+}
