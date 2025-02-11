@@ -3,27 +3,22 @@
 
 #include "config.h"
 #include "buttons.h"
-#include "lamps.h" 
+#include "lamps.h"
 #include "screen.h"
 #include "message.h"
 
 #include "TxRxEth.h"
 
-
 #include <thread>
 #include <atomic>
-
-
 
 // Вектор лампочек
 std::vector<Lamp> lamps;
 
-
-
-bool __listener_thread_running = true;
+bool        __listener_thread_running = true;
 std::thread ethernetThread;
 
-void ethernetListener(std::vector<std::string> *texts) {// Функция прослушивания Ethernet соединения
+void ethernetListener(std::vector<std::string> *texts) {  // Функция прослушивания Ethernet соединения
     while (__listener_thread_running) {
         std::string data = receive_eth();
 
@@ -36,15 +31,14 @@ void ethernetListener(std::vector<std::string> *texts) {// Функция про
 
 unsigned char *buffer = (unsigned char *)malloc(BUFFER_SIZE * sizeof(*buffer));  // Выделение памяти для буфера
 
-std::atomic<bool> audio_transmit(false); // Флаг для управления завершением аудиопередачи
-std::thread audioThread;
+std::atomic<bool> audio_transmit(false);  // Флаг для управления завершением аудиопередачи
+std::thread       audioThread;
 
-void audio(unsigned char *buffer) { // Функция передачи АУДИО
+void audio(unsigned char *buffer) {  // Функция передачи АУДИО
     while (audio_transmit) {
         audioTxEth(buffer, audio_transmit);
     }
 }
-
 
 int main() {
     XInitThreads();
@@ -62,13 +56,11 @@ int main() {
     std::vector<std::string> texts;
     ethernetThread = std::thread(ethernetListener, &texts);
 
-
     sf::Font font;
     font.loadFromFile("assets/troika.otf");
 
     // Создаем лампочки
     lamp_create(lamps);  // Вызов функции для создания лампочек
-
 
     while (window.isOpen()) {
         sf::Event event;
@@ -80,31 +72,31 @@ int main() {
                 for (const auto &button : buttons) {
                     button->change_color(sf::Color::White);
 
-                    if (button->isMouseOver(window)) {  
+                    if (button->isMouseOver(window)) {
                         if (button->m_command == "ptt") {
-                            if (!audio_transmit) { // Проверяем, не идет ли передача
+                            if (!audio_transmit) {  // Проверяем, не идет ли передача
                                 lamps[0].changeColor(sf::Color::Red);
                                 audio_transmit = true;
-                                audioThread = std::thread(audioTxEth, buffer, std::ref(audio_transmit));  // Передаем флаг по ссылке
+                                audioThread =
+                                    std::thread(audioTxEth, buffer, std::ref(audio_transmit));  // Передаем флаг по ссылке
                             }
                         }
                         // FIXME Get coordinartes from event not from window directly
                         else
-                           transmit_eth(button->m_command);
+                            transmit_eth(button->m_command);
                     }
                 }
             }
 
             if (event.type == sf::Event::MouseButtonReleased) {
                 if (audio_transmit) {
-                    audio_transmit = false; // Устанавливаем флаг завершения
+                    audio_transmit = false;  // Устанавливаем флаг завершения
                     if (audioThread.joinable()) {
-                        audioThread.join(); // Дожидаемся завершения потока
+                        audioThread.join();  // Дожидаемся завершения потока
                     }
                     lamps[0].changeColor(sf::Color::Black);
                 }
             }
-
 
             window.clear(sf::Color::Black);
 
@@ -131,7 +123,6 @@ int main() {
                 y_offset += text_offset;
             }
 
-
             // Отрисовка лампочек
             for (auto &lamp : lamps) {
                 lamp.draw(window);
@@ -140,7 +131,7 @@ int main() {
             window.display();
         }
     }
-    
+
     // завершаем поток передачи звука
     if (audio_transmit) {
         audio_transmit = false;
@@ -150,7 +141,7 @@ int main() {
     }
 
     //  завершаем поток передачи по Ethernet
-    if (ethernetThread.joinable()) 
+    if (ethernetThread.joinable())
         ethernetThread.join();
 
     for (auto &button : buttons)

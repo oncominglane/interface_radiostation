@@ -3,24 +3,24 @@
 #include <cerrno>
 #include <cstdlib>
 
-void audioRxEth(unsigned char *buffer, std::atomic<bool>& audio_receive) {
+void audioRxEth(unsigned char *buffer, std::atomic<bool> &audio_receive) {
     //Параметры для захвата звука
-    snd_pcm_t *playback_handle;
+    snd_pcm_t           *playback_handle;
     snd_pcm_hw_params_t *hw_params;
-    //snd_pcm_sw_params_t *sw_params;
-    //snd_async_handler_t *pcm_callback;
+    // snd_pcm_sw_params_t *sw_params;
+    // snd_async_handler_t *pcm_callback;
 
     // Создание сокета для передачи данных
-    int sockfd, newsockfd;
+    int                sockfd, newsockfd;
     struct sockaddr_in serv_addr, cli_addr;
 
-    unsigned int resample = 1;
-    unsigned int sampleRate = 44100;
-    long int dataCapacity = 0;
-    int channels = 1;
-    snd_pcm_uframes_t local_buffer = BUFFER_SIZE;
+    unsigned int      resample      = 1;
+    unsigned int      sampleRate    = 44100;
+    long int          dataCapacity  = 0;
+    int               channels      = 1;
+    snd_pcm_uframes_t local_buffer  = BUFFER_SIZE;
     snd_pcm_uframes_t local_periods = PERIODS;
-    socklen_t clilen;
+    socklen_t         clilen;
 
     // Настройка сокета
     if ((sockfd = socket(AF_INET, SOCK_STREAM, 0)) < 0) {
@@ -32,20 +32,15 @@ void audioRxEth(unsigned char *buffer, std::atomic<bool>& audio_receive) {
     setsockopt(sockfd, SOL_SOCKET, SO_REUSEADDR, &optval, sizeof(optval));
 
     memset(&serv_addr, 0, sizeof(serv_addr));
-    serv_addr.sin_family = AF_INET; 
+    serv_addr.sin_family      = AF_INET;
     serv_addr.sin_addr.s_addr = INADDR_ANY;
-    serv_addr.sin_port = htons(PORT);
-
-
-
-
+    serv_addr.sin_port        = htons(PORT);
 
     int bindResult = bind(sockfd, (struct sockaddr *)&serv_addr, sizeof(serv_addr));
     if (bindResult < 0) {
         std::cerr << "Error on binding: " << strerror(errno) << " (errno: " << errno << ")" << std::endl;
         throw std::runtime_error("Binding failed.");
     }
-
 
     listen(sockfd, 5);
     clilen = sizeof(cli_addr);
@@ -64,7 +59,6 @@ void audioRxEth(unsigned char *buffer, std::atomic<bool>& audio_receive) {
         close(sockfd);
         return;
     }
-
 
     if (snd_pcm_hw_params_any(playback_handle, hw_params) < 0) {
         perror("Cannot configure hardware parameters on this PCM device");
@@ -87,7 +81,7 @@ void audioRxEth(unsigned char *buffer, std::atomic<bool>& audio_receive) {
         return;
     }
 
-    if (snd_pcm_hw_params_set_access (playback_handle, hw_params, SND_PCM_ACCESS_RW_INTERLEAVED) < 0) {
+    if (snd_pcm_hw_params_set_access(playback_handle, hw_params, SND_PCM_ACCESS_RW_INTERLEAVED) < 0) {
         perror("Cannot set access rate");
         snd_pcm_hw_params_free(hw_params);
         snd_pcm_close(playback_handle);
@@ -103,7 +97,7 @@ void audioRxEth(unsigned char *buffer, std::atomic<bool>& audio_receive) {
         return;
     }
 
-    if (snd_pcm_hw_params_set_rate_near (playback_handle, hw_params, &sampleRate, 0) < 0) {
+    if (snd_pcm_hw_params_set_rate_near(playback_handle, hw_params, &sampleRate, 0) < 0) {
         perror("Cannot set rate near");
         snd_pcm_hw_params_free(hw_params);
         snd_pcm_close(playback_handle);
@@ -118,7 +112,7 @@ void audioRxEth(unsigned char *buffer, std::atomic<bool>& audio_receive) {
         close(sockfd);
         return;
     }
-    
+
     if (snd_pcm_hw_params_set_buffer_size_near(playback_handle, hw_params, &local_buffer) < 0) {
         perror("Cannot set buffer size near");
         snd_pcm_hw_params_free(hw_params);
@@ -135,7 +129,6 @@ void audioRxEth(unsigned char *buffer, std::atomic<bool>& audio_receive) {
         return;
     }
 
-
     if (snd_pcm_hw_params(playback_handle, hw_params) < 0) {
         perror("Cannot set hardware parameters");
         snd_pcm_hw_params_free(hw_params);
@@ -147,17 +140,12 @@ void audioRxEth(unsigned char *buffer, std::atomic<bool>& audio_receive) {
     // Освобождение выделенной памяти
     snd_pcm_hw_params_free(hw_params);
 
-
     printf("Buffer size: %lu, Period size: %lu\n", local_buffer, local_periods);
 
-    
- 
-    
-    
     while (1) {
         if ((newsockfd = accept(sockfd, (struct sockaddr *)&cli_addr, &clilen)) < 0) {
-        perror("Accept error");
-        continue;
+            perror("Accept error");
+            continue;
         }
 
         printf("Client connected\n");
@@ -171,7 +159,8 @@ void audioRxEth(unsigned char *buffer, std::atomic<bool>& audio_receive) {
                     snd_pcm_drop(playback_handle);
                     close(newsockfd);
                     break;
-                } else {
+                }
+                else {
                     perror("Receive error");
                     snd_pcm_drop(playback_handle);
                     close(newsockfd);
@@ -179,25 +168,23 @@ void audioRxEth(unsigned char *buffer, std::atomic<bool>& audio_receive) {
                 break;
             }
 
-
-
-            int err = 0;    
+            int err    = 0;
             int frames = n / (channels * 2);
-            err = snd_pcm_writei(playback_handle, buffer, frames);
+            err        = snd_pcm_writei(playback_handle, buffer, frames);
             // Воспроизводим данные с помощью ALSA
             if (err < 0) {
-                if (err == -EPIPE){
-                    fprintf(stderr, "Temporary underrun, retrying...\n"); //Обработка, если установлен флаг SND_PCM_NONBLOCK
+                if (err == -EPIPE) {
+                    fprintf(stderr, "Temporary underrun, retrying...\n");  //Обработка, если установлен флаг SND_PCM_NONBLOCK
                     snd_pcm_prepare(playback_handle);
                 }
-                if (err == EAGAIN){
-                    fprintf(stderr, "Temporary unavailable, retrying...\n"); 
+                if (err == EAGAIN) {
+                    fprintf(stderr, "Temporary unavailable, retrying...\n");
                     continue;
                 }
             }
             dataCapacity += n;
-            
-            //printf("\ndataCapacity: %ld\n\n", dataCapacity);
+
+            // printf("\ndataCapacity: %ld\n\n", dataCapacity);
         }
     }
 
