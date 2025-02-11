@@ -23,8 +23,8 @@
 #include <wiringPi.h>
 
 #define DEV_DIR "/dev"
-#define BUFFER_SIZE 2048
-#define PERIODS 1024
+#define BUFFER_SIZE 16384
+#define PERIODS 4096
 #define TTY "ttyAMA"
 #define PORT 5678
 #define CHANNELS 1
