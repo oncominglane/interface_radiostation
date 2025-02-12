@@ -23,21 +23,38 @@ void buttons_create(std::vector<Button *> &buttons) {
                                                   "\x05\x8A\x02\x57\xB4", "\x05\x85\x02\x57\xC5"};
 
     offset.y -= button_offset;
-    for (const auto &signal_button_command : signal_button_commands)
-    {  // Creates signal buttons row at the bottom of functional buttons column
+    for (const auto &signal_button_command : signal_button_commands)    { 
+         // Creates signal buttons row at the bottom of functional buttons column
         offset.x += button_offset;
-
         buttons.push_back(new ButtonCircle(offset, button_radius, signal_button_asset, signal_button_command,
                                            std::to_string(++signal_button_number)));
     }
 
-    const std::map<const std::string, const std::string> arrow_buttons = {{"assets/arrow_.png", "\x05\x04\xFF\x57\xCC"},
-                                                                          {"assets/arrow.png", "\x05\x04\x01\x57\xF5"}};
-
-    for (const auto &[button_asset, button_command] : arrow_buttons)
-    {  // Creates arrow buttons at the end of signal buttons row
+    const std::map<const std::string, std::string> arrow_buttons = {
+        {"assets/arrow.png", "\x05\x04\xFF\x57\xCC"},  // Левая стрелка
+        {"assets/arrow_.png", "\x05\x04\x01\x57\xF5"}   // Правая стрелка
+    };
+    
+    
+    std::cout << "Creating arrow buttons...\n";
+    for (const auto &[button_asset, button_data] : arrow_buttons) {
+        const auto button_command = button_data;
         offset.x += button_offset;
 
-        buttons.push_back(new ButtonCircle(offset, button_radius, button_asset, button_command, ""));
+        //std::cout << "Button at: " << offset.x << ", " << offset.y 
+        //        << " | Flip: " << std::endl;
+
+        ButtonCircle *button = new ButtonCircle(offset, button_radius, button_asset, button_command, "");
+        //std::cout << "Creating button with texture: " << button_asset
+        //  << " | Command: " << button_command
+        //  << " | Flip: " <<  std::endl;
+        //std::cout << "Total buttons in map: " << arrow_buttons.size() << std::endl;
+
+        buttons.push_back(button);
     }
+
+    std::cout << "Total buttons: " << buttons.size() << std::endl;
+
+    
+    
 }

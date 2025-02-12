@@ -2,8 +2,10 @@
 #include <alsa/pcm.h>
 
 //#define SERVER_IP "192.168.1.112" // IP адрес Митино
-#define SERVER_IP "192.168.0.119"  // IP адрес дом
+//#define SERVER_IP "192.168.0.119"  // IP адрес дом
 //#define SERVER_IP "10.10.1.62"  // IP адрес работа
+
+#define SERVER_IP "192.168.1.2"  // IP адрес по проводу 
 
 void audioTxEth_client(unsigned char *buffer) {
     // Параметры для захвата звука
@@ -128,9 +130,6 @@ void audioTxEth_client(unsigned char *buffer) {
     // Освобождение выделенной памяти
     snd_pcm_hw_params_free(hw_params);
 
-    // snd_pcm_hw_params_get_buffer_size(hw_params, &local_buffer);
-    // snd_pcm_hw_params_get_period_size(hw_params, &local_periods, 0);
-
     printf("Buffer size: %lu, Period size: %lu\n", local_buffer, local_periods);
 
     // Подготовка устройства к воспроизведению
@@ -143,12 +142,6 @@ void audioTxEth_client(unsigned char *buffer) {
 
     // Основной цикл для захвата и передачи данных
     while (1) {
-        /*if (kbhit()) {
-            char key = getchar();  // Получаем символ
-            if (key != 'p') {
-                break;  // Прерываем цикл, если не нажата клавиша 'p'
-            }
-        }*/
 
         int frames = snd_pcm_readi(capture_handle, buffer, BUFFER_SIZE / (channels * 2));
         // system("gpio readall > gpio.txt");
@@ -159,11 +152,6 @@ void audioTxEth_client(unsigned char *buffer) {
             continue;
         }
 
-        /*for (int i = 0; i < BUFFER_SIZE; i++) {
-            printf("%02x", buffer[i]);
-            if (((i + 1) % 16) == 0)
-                printf("\n");
-        } */                                          //Отладка
 
         // Передаем данные по сети
         // ssize_t bytes_sent = send(sockfd, buffer, frames * channels * 2, 0);

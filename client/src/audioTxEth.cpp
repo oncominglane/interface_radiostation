@@ -1,9 +1,9 @@
 #include "TxRxEth.h"
 #include <atomic>
 
-#define SERVER_IP "192.168.0.119"  // IP адрес дом
+//#define SERVER_IP "192.168.0.119"  // IP адрес дом
 //#define SERVER_IP "10.10.1.62"  // IP адрес работа
-//#define SERVER_IP "192.168.1.1"
+#define SERVER_IP "192.168.1.2"
 
 void audioTxEth(unsigned char *buffer, std::atomic<bool> &audio_transmit) {
     // Параметры для захвата звука
@@ -158,12 +158,17 @@ void audioTxEth(unsigned char *buffer, std::atomic<bool> &audio_transmit) {
         ssize_t bytes_sent = send(sockfd, buffer, BUFFER_SIZE, 0);
         if (bytes_sent < 0) {
             perror("Send error");
+            close(sockfd);
+            snd_pcm_drop(capture_handle);
+            snd_pcm_close(capture_handle);
+            fprintf(stderr, "Connection lost. Reconnecting...\n");
             break;
         }
+
         dataCapacity += bytes_sent;
         // printf("\ndataCapacity: %ld\n\n", dataCapacity);
     }
-
+    memset(buffer, 0, BUFFER_SIZE);
     snd_pcm_drop(capture_handle);
     snd_pcm_close(capture_handle);
     close(sockfd);
