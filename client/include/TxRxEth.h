@@ -44,9 +44,7 @@
 
 int transmit_eth(std::string message1);
 void audioTxEth(unsigned char *buffer, std::atomic<bool>& audio_transmit);
-//void audioRxEth(unsigned char *buffer, std::atomic<bool>& audio_receive );
 void audioRxEth(unsigned char *buffer, std::atomic<bool> &audio_receive, std::atomic<bool> &signal_received); 
 std::string receive_eth();
-
 
 //403.050 МГц

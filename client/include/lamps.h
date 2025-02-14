@@ -2,7 +2,7 @@
 
 #include <SFML/Graphics.hpp>
 #include <string>
-
+ 
 class Lamp {
 public:
     Lamp(sf::Vector2f position, float radius, sf::Color color)

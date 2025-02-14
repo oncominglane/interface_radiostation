@@ -20,7 +20,7 @@ public:
         m_font.loadFromFile("assets/troika.otf");
         m_screenText.setFont(m_font);
         m_screenText.setString(text);
-        m_screenText.setCharacterSize(button_text_size);
+        m_screenText.setCharacterSize(__button_text_size);
         m_screenText.setFillColor(sf::Color::Black);
         m_screenText.setPosition(position.x, position.y);
     }

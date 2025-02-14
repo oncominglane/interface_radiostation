@@ -1,4 +1,7 @@
 #include <X11/Xlib.h>
+#include <thread>
+#include <atomic>
+#include <mutex>
 #undef None
 
 #include "config.h"
@@ -9,9 +12,7 @@
 
 #include "TxRxEth.h"
 
-#include <thread>
-#include <atomic>
-#include <mutex>
+
 
 //FIXME убрать все отловы ошибок try-catch, если все отлично работает
 
@@ -47,9 +48,8 @@ void ethernetListener(std::vector<std::string> *texts) {  // Функция пр
 std::vector<unsigned char> buffer(BUFFER_SIZE);
 std::mutex                 buffer_mutex;  // Мьютекс для защиты buffer
 
-std::atomic<bool> audio_receive(true);    // Флаг для управления потоком приёма
-std::atomic<bool> audio_transmit(false);  // Флаг для передачи
-
+std::atomic<bool> audio_receive(true);     // Флаг для управления потоком приёма
+std::atomic<bool> audio_transmit(false);   // Флаг для передачи
 std::atomic<bool> signal_received(false);  // Флаг для индикации приема сигнала
 
 std::thread audioRxThread;
@@ -111,19 +111,21 @@ int main() {
 
         // Запускаем поток приёма звука
         audioRxThread = std::thread(audioReceiver, std::ref(buffer), std::ref(audio_receive), std::ref(signal_received));
-        sf::RenderWindow window(sf::VideoMode(resolution_x, resolution_y), "Interface Radiostation Project");
+        sf::RenderWindow window(sf::VideoMode(__resolution_x, __resolution_y), "Radio station remote control system");
         window.setActive(false);
+        
+        sf::Vector2f screen_offset(__left_ui_border + __graphic_object_offset, __bottom_ui_border);
 
-        Screen_main main_screen(
-            sf::Vector2f(left_border + button_offset, bottom_border),  // TODO Make vector and use it in texts positioning
-            sf::Vector2f(main_screen_width, main_screen_height), "assets/white.png", "Main Screen");
+
+        // TODO Make vector and use it in texts positioning
+        Screen_main main_screen(screen_offset, sf::Vector2f(__main_screen_width, __main_screen_height), "assets/white.png", "Main Screen");
 
         // Создаем лампочки
         std::vector<Lamp> lamps;
         lamp_create(lamps);
 
         // Создаем кнопки
-        std::vector<Button *> buttons;
+        std::vector<ButtonCircle *> buttons;
         buttons_create(buttons);
 
         std::vector<std::string> texts;
@@ -154,7 +156,8 @@ int main() {
                     for (const auto &button : buttons) {
                         button->change_color(sf::Color::White);
 
-                        if (button->isMouseOver(window)) {
+                        sf::Vector2f mouse_pos(event.touch.x, event.touch.y);
+                        if (button->is_mouse_over(mouse_pos)) {
                             if (button->m_command == "ptt") {
                                 if (!audio_transmit) {  // Проверяем, не идет ли передача
                                     lamps[0].changeColor(sf::Color::Red); //Лампочка - индикатор передачи, красная
@@ -184,8 +187,8 @@ int main() {
                         audio_receive = true;  // Возобновляем приём звука
                         lamps[0].changeColor(sf::Color::Black);
                     }
-                }  // Закрывающая скобка для if (event.type == sf::Event::MouseButtonReleased)
-            }  // Закрывающая скобка для while (window.pollEvent(event))
+                }  
+            }  
 
             // Обновление таймера
             elapsedTime += clock.restart().asSeconds();
@@ -212,19 +215,18 @@ int main() {
                 for (const auto &button : buttons)
                     button->draw(window);
 
-                int x_offset = left_border + button_offset;
-                int y_offset = bottom_border + text_offset;
+                sf::Vector2f screen_text_offset = screen_offset;
 
                 for (size_t text_number = 1; text_number < texts.size(); text_number++) {
                     std::string screen_text_string = "Button " + std::to_string(text_number) + ": " + texts[text_number];
 
                     sf::Text screen_text(screen_text_string, font);
-                    screen_text.setPosition(x_offset, y_offset);
+                    screen_text.setPosition(screen_text_offset);
                     screen_text.setFillColor(sf::Color::Black);
 
                     window.draw(screen_text);
 
-                    y_offset += text_offset;
+                    screen_text_offset.y += __text_offset;
                 }
 
                 // Отрисовка лампочек
@@ -237,7 +239,7 @@ int main() {
                 // Если обновление не требуется, добавляем небольшую задержку
                 std::this_thread::sleep_for(std::chrono::milliseconds(1));
             }
-        }  // Закрывающая скобка для while (window.isOpen())
+        }  
 
         // Завершение потоков корректно
         audio_receive = false;
