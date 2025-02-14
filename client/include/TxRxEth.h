@@ -40,8 +40,12 @@
 #define TTY "ttyAMA"
 #define PORT 5678
 
+#define SERVER_IP "192.168.1.2"
 
 int transmit_eth(std::string message1);
 void audioTxEth(unsigned char *buffer, std::atomic<bool>& audio_transmit);
 void audioRxEth(unsigned char *buffer, std::atomic<bool>& audio_receive );
 std::string receive_eth();
+
+
+//403.050 МГц

@@ -58,3 +58,10 @@ void buttons_create(std::vector<Button *> &buttons) {
     
     
 }
+
+
+
+
+
+
+//СМ ЗИП ПАПКУ KOLYAN от егора он там че то с кнопками сделал

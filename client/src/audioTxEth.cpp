@@ -1,10 +1,6 @@
 #include "TxRxEth.h"
 #include <atomic>
 
-//#define SERVER_IP "192.168.0.119"  // IP адрес дом
-//#define SERVER_IP "10.10.1.62"  // IP адрес работа
-#define SERVER_IP "192.168.1.2"
-
 void audioTxEth(unsigned char *buffer, std::atomic<bool> &audio_transmit) {
     // Параметры для захвата звука
     snd_pcm_t           *capture_handle;

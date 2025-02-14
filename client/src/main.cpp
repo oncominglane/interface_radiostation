@@ -13,6 +13,8 @@
 #include <atomic>
 #include <mutex>
 
+//FIXME убрать все отловы ошибок try-catch, если все отлично работает
+
 void customTerminate() {
     std::cerr << "Custom terminate handler called!" << std::endl;
     std::abort();
@@ -122,16 +124,16 @@ int main() {
         buttons_create(buttons);
 
         std::vector<std::string> texts;
-
-        /*try {
+        /*
+        try {
             ethernetThread = std::thread(ethernetListener, &texts);
             pthread_setname_np(ethernetThread.native_handle(), "EthernetThread");
         } catch (const std::exception& e) {
             std::cerr << "Exception while starting ethernetThread: " << e.what() << std::endl;
         } catch (...) {
             std::cerr << "Unknown exception while starting ethernetThread!" << std::endl;
-        }*/
-
+        }
+        */
         sf::Font font;
         try {
             if (!font.loadFromFile("assets/troika.otf")) {
@@ -242,13 +244,13 @@ int main() {
         catch (const std::exception &e) {
             std::cerr << "Exception while joining audioTxThread: " << e.what() << std::endl;
         }
-
-        /*try {
+/*
+        try {
         if (ethernetThread.joinable()) ethernetThread.join();
         }catch (const std::exception& e) {
                         std::cerr << "Exception while joining ethernetThread: " << e.what() << std::endl;
                     }
-        */
+  */      
 
         for (auto &button : buttons)
             delete button;

@@ -69,6 +69,8 @@ public:
 
     int get_position_x() { return m_position.x; }
 
+
+
 private:
     sf::CircleShape m_circle;
     float           m_radius;
