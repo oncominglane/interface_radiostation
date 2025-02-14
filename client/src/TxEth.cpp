@@ -1,7 +1,7 @@
 #include "TxRxEth.h"
 
 
-#define SERVER_PORT 5678  // Порт сервера        ноутбук и малинка
+#define SERVER_PORT 5678  // Порт сервера     
 
 int transmit_eth(std::string message1) {
     const char *message = message1.c_str();

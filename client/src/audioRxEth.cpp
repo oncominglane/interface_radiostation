@@ -3,7 +3,7 @@
 #include <cerrno>
 #include <cstdlib>
 
-void audioRxEth(unsigned char *buffer, std::atomic<bool> &audio_receive) {
+void audioRxEth(unsigned char *buffer, std::atomic<bool> &audio_receive, std::atomic<bool> &signal_received) {
     //Параметры для захвата звука
     snd_pcm_t           *playback_handle;
     snd_pcm_hw_params_t *hw_params;
@@ -149,19 +149,23 @@ void audioRxEth(unsigned char *buffer, std::atomic<bool> &audio_receive) {
         }
 
         printf("Client connected\n");
+        signal_received = true;  // Устанавливаем флаг приема сигнала
         snd_pcm_prepare(playback_handle);
+
         // Основной цикл для приёма и воспроизведения звуковых данных
         while (audio_receive) {
             int n = recv(newsockfd, buffer, BUFFER_SIZE, 0);
             if (n <= 0) {
                 if (n == 0) {
                     printf("Connection closed by client\n");
+                    signal_received = false;  // Сбрасываем флаг приема сигнала
                     snd_pcm_drop(playback_handle);
                     close(newsockfd);
                     break;
                 }
                 else {
                     perror("Receive error");
+                    signal_received = false;  // Сбрасываем флаг приема сигнала
                     snd_pcm_drop(playback_handle);
                     close(newsockfd);
                 }

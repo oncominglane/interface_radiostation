@@ -50,10 +50,12 @@ std::mutex                 buffer_mutex;  // Мьютекс для защиты 
 std::atomic<bool> audio_receive(true);    // Флаг для управления потоком приёма
 std::atomic<bool> audio_transmit(false);  // Флаг для передачи
 
+std::atomic<bool> signal_received(false);  // Флаг для индикации приема сигнала
+
 std::thread audioRxThread;
 std::thread audioTxThread;
 
-void audioReceiver(std::vector<unsigned char> &buffer, std::atomic<bool> &running) {
+void audioReceiver(std::vector<unsigned char> &buffer, std::atomic<bool> &running, std::atomic<bool> &signal_received) {
     try {
         while (running) {
             std::this_thread::sleep_for(std::chrono::milliseconds(10));
@@ -63,7 +65,7 @@ void audioReceiver(std::vector<unsigned char> &buffer, std::atomic<bool> &runnin
                 localBuffer = buffer;  // Копируем данные
             }
             try {
-                audioRxEth(localBuffer.data(), running);
+                audioRxEth(localBuffer.data(), running, signal_received);
             }
             catch (const std::exception &e) {
                 std::cerr << "audioRxEth exception: " << e.what() << std::endl;
@@ -108,8 +110,7 @@ int main() {
         XInitThreads();
 
         // Запускаем поток приёма звука
-        audioRxThread = std::thread(audioReceiver, std::ref(buffer), std::ref(audio_receive));
-
+        audioRxThread = std::thread(audioReceiver, std::ref(buffer), std::ref(audio_receive), std::ref(signal_received));
         sf::RenderWindow window(sf::VideoMode(resolution_x, resolution_y), "Interface Radiostation Project");
         window.setActive(false);
 
@@ -117,23 +118,16 @@ int main() {
             sf::Vector2f(left_border + button_offset, bottom_border),  // TODO Make vector and use it in texts positioning
             sf::Vector2f(main_screen_width, main_screen_height), "assets/white.png", "Main Screen");
 
-        // Вектор лампочек
+        // Создаем лампочки
         std::vector<Lamp> lamps;
+        lamp_create(lamps);
 
+        // Создаем кнопки
         std::vector<Button *> buttons;
         buttons_create(buttons);
 
         std::vector<std::string> texts;
-        /*
-        try {
-            ethernetThread = std::thread(ethernetListener, &texts);
-            pthread_setname_np(ethernetThread.native_handle(), "EthernetThread");
-        } catch (const std::exception& e) {
-            std::cerr << "Exception while starting ethernetThread: " << e.what() << std::endl;
-        } catch (...) {
-            std::cerr << "Unknown exception while starting ethernetThread!" << std::endl;
-        }
-        */
+
         sf::Font font;
         try {
             if (!font.loadFromFile("assets/troika.otf")) {
@@ -145,8 +139,10 @@ int main() {
             return EXIT_FAILURE;
         }
 
-        // Создаем лампочки
-        lamp_create(lamps);
+        // Таймер для управления частотой обновления
+        sf::Clock clock;
+        const float updateInterval = 1.0f / 30.0f; // 30 обновлений в секунду
+        float elapsedTime = 0.0f;
 
         while (window.isOpen()) {
             sf::Event event;
@@ -161,7 +157,7 @@ int main() {
                         if (button->isMouseOver(window)) {
                             if (button->m_command == "ptt") {
                                 if (!audio_transmit) {  // Проверяем, не идет ли передача
-                                    lamps[0].changeColor(sf::Color::Red);
+                                    lamps[0].changeColor(sf::Color::Red); //Лампочка - индикатор передачи, красная
                                     audio_receive  = false;  // Останавливаем приём звука
                                     audio_transmit = true;
                                     audioTxThread  = std::thread(audioTransmitter, std::ref(buffer), std::ref(audio_transmit));
@@ -188,8 +184,24 @@ int main() {
                         audio_receive = true;  // Возобновляем приём звука
                         lamps[0].changeColor(sf::Color::Black);
                     }
+                }  // Закрывающая скобка для if (event.type == sf::Event::MouseButtonReleased)
+            }  // Закрывающая скобка для while (window.pollEvent(event))
+
+            // Обновление таймера
+            elapsedTime += clock.restart().asSeconds();
+
+            // Если прошло достаточно времени, обновляем экран
+            if (elapsedTime >= updateInterval) {
+                elapsedTime = 0.0f;
+
+                // Обновление состояния лампочки индикатора приема сигнала
+                if (signal_received) {
+                    lamps[1].changeColor(sf::Color::Yellow);  // Лампочка загорается желтым при приеме сигнала
+                } else {
+                    lamps[1].changeColor(sf::Color::Black);  // Лампочка выключается при отсутствии сигнала
                 }
 
+                // Очистка и отрисовка
                 window.clear(sf::Color::Black);
 
                 if (texts.size() > 0)
@@ -221,8 +233,12 @@ int main() {
                 }
 
                 window.display();
+            } else {
+                // Если обновление не требуется, добавляем небольшую задержку
+                std::this_thread::sleep_for(std::chrono::milliseconds(1));
             }
-        }
+        }  // Закрывающая скобка для while (window.isOpen())
+
         // Завершение потоков корректно
         audio_receive = false;
         try {
@@ -244,13 +260,6 @@ int main() {
         catch (const std::exception &e) {
             std::cerr << "Exception while joining audioTxThread: " << e.what() << std::endl;
         }
-/*
-        try {
-        if (ethernetThread.joinable()) ethernetThread.join();
-        }catch (const std::exception& e) {
-                        std::cerr << "Exception while joining ethernetThread: " << e.what() << std::endl;
-                    }
-  */      
 
         for (auto &button : buttons)
             delete button;
@@ -267,3 +276,4 @@ int main() {
     }
     return 0;
 }
+
