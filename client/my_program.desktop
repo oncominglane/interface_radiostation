@@ -1,0 +1,9 @@
+# перетащить данный файл из папки на рабочий стол!
+[Desktop Entry]
+Name=My Program
+Comment=Запуск моей программы
+Exec=/home/oncoming-lane/Interface-radiostation/client/run.sh
+Icon=/home/oncoming-lane/Interface-radiostation/client/assets/icon.png
+Terminal=false  # Открывать терминал (true) или нет (false)
+Type=Application
+Categories=Utility;Application;
