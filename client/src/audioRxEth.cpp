@@ -21,6 +21,7 @@ void audioRxEth(unsigned char *buffer, std::atomic<bool> &audio_receive, std::at
     snd_pcm_uframes_t local_buffer  = BUFFER_SIZE;
     snd_pcm_uframes_t local_periods = PERIODS;
     socklen_t         clilen;
+    snd_pcm_state_t   state;
 
     // Настройка сокета
     if ((sockfd = socket(AF_INET, SOCK_STREAM, 0)) < 0) {
@@ -149,24 +150,30 @@ void audioRxEth(unsigned char *buffer, std::atomic<bool> &audio_receive, std::at
         }
 
         printf("Client connected\n");
-        signal_received = true;  // Устанавливаем флаг приема сигнала
-        snd_pcm_prepare(playback_handle);
+        
+        if (snd_pcm_prepare(playback_handle) < 0) {
+            printf("Error preparing\n");
+        }
+
 
         // Основной цикл для приёма и воспроизведения звуковых данных
         while (audio_receive) {
             int n = recv(newsockfd, buffer, BUFFER_SIZE, 0);
+
             if (n <= 0) {
                 if (n == 0) {
                     printf("Connection closed by client\n");
                     signal_received = false;  // Сбрасываем флаг приема сигнала
                     snd_pcm_drop(playback_handle);
                     close(newsockfd);
+                    memset(buffer, 0, BUFFER_SIZE);
                     break;
                 }
                 else {
                     perror("Receive error");
                     signal_received = false;  // Сбрасываем флаг приема сигнала
                     snd_pcm_drop(playback_handle);
+                    memset(buffer, 0, BUFFER_SIZE);
                     close(newsockfd);
                 }
                 break;
@@ -174,12 +181,18 @@ void audioRxEth(unsigned char *buffer, std::atomic<bool> &audio_receive, std::at
 
             int err    = 0;
             int frames = n / (channels * 2);
+            state = snd_pcm_state(playback_handle);
+            if (state == SND_PCM_STATE_XRUN) {
+                snd_pcm_prepare(playback_handle);
+            }
+
             err        = snd_pcm_writei(playback_handle, buffer, frames);
             // Воспроизводим данные с помощью ALSA
             if (err < 0) {
                 if (err == -EPIPE) {
                     fprintf(stderr, "Temporary underrun, retrying...\n");  //Обработка, если установлен флаг SND_PCM_NONBLOCK
                     snd_pcm_prepare(playback_handle);
+                    continue;
                 }
                 if (err == EAGAIN) {
                     fprintf(stderr, "Temporary unavailable, retrying...\n");

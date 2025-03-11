@@ -35,12 +35,15 @@
 
 
 #define DEV_DIR "/dev"
-#define BUFFER_SIZE 1024
-#define PERIODS 512
+#define BUFFER_SIZE 2048
+#define PERIODS 1024
 #define TTY "ttyAMA"
 #define PORT 5678
+#define SAMPLERATE 44100
 
-#define SERVER_IP "192.168.1.2"
+//#define SERVER_IP "192.168.1.2"
+#define SERVER_IP "10.10.1.62"
+//#define SERVER_IP "192.168.0.119"
 
 int transmit_eth(std::string message1);
 void audioTxEth(unsigned char *buffer, std::atomic<bool>& audio_transmit);

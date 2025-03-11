@@ -128,8 +128,6 @@ int main() {
         std::vector<ButtonCircle *> buttons;
         buttons_create(buttons);
 
-        std::vector<std::string> texts;
-
         sf::Font font;
         try {
             if (!font.loadFromFile("assets/troika.otf")) {
@@ -145,6 +143,13 @@ int main() {
         sf::Clock clock;
         const float updateInterval = 1.0f / 30.0f; // 30 обновлений в секунду
         float elapsedTime = 0.0f;
+
+
+
+        std::vector<std::string> texts;
+        //ethernetThread = std::thread(ethernetListener, &texts);
+
+
 
         while (window.isOpen()) {
             sf::Event event;

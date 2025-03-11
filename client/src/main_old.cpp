@@ -1,4 +1,7 @@
 #include <X11/Xlib.h>
+#include <thread>
+#include <atomic>
+#include <mutex>
 #undef None
 
 #include "config.h"
@@ -9,11 +12,8 @@
 
 #include "TxRxEth.h"
 
-#include <thread>
-#include <atomic>
 
-// Вектор лампочек
-std::vector<Lamp> lamps;
+
 
 bool        __listener_thread_running = true;
 std::thread ethernetThread;
@@ -43,14 +43,13 @@ void audio(unsigned char *buffer) {  // Функция передачи АУДИ
 int main() {
     XInitThreads();
 
-    sf::RenderWindow window(sf::VideoMode(resolution_x, resolution_y), "Interface Radiostation Project");
+    sf::RenderWindow window(sf::VideoMode(__resolution_x, __resolution_y), "Radio station remote control system");
     window.setActive(false);
 
-    Screen_main main_screen(
-        sf::Vector2f(left_border + button_offset, bottom_border),  // TODO Make vector and use it in texts positioning
-        sf::Vector2f(main_screen_width, main_screen_height), "assets/white.png", "Main Screen");
+    sf::Vector2f screen_offset(__left_ui_border + __graphic_object_offset, __bottom_ui_border);
+    Screen_main main_screen(screen_offset, sf::Vector2f(__main_screen_width, __main_screen_height), "assets/white.png", "Main Screen");
 
-    std::vector<Button *> buttons;
+    std::vector<ButtonCircle *> buttons;
     buttons_create(buttons);
 
     std::vector<std::string> texts;
@@ -59,7 +58,7 @@ int main() {
     sf::Font font;
     font.loadFromFile("assets/troika.otf");
 
-    // Создаем лампочки
+    std::vector<Lamp> lamps;
     lamp_create(lamps);  // Вызов функции для создания лампочек
 
     while (window.isOpen()) {
@@ -71,8 +70,10 @@ int main() {
             if (event.type == sf::Event::MouseButtonPressed) {  // Button is pressed -> Sending command
                 for (const auto &button : buttons) {
                     button->change_color(sf::Color::White);
+                    sf::Vector2f mouse_pos(event.touch.x, event.touch.y);
 
-                    if (button->isMouseOver(window)) {
+
+                    if (button->is_mouse_over(mouse_pos)) 
                         if (button->m_command == "ptt") {
                             if (!audio_transmit) {  // Проверяем, не идет ли передача
                                 lamps[0].changeColor(sf::Color::Red);
@@ -108,19 +109,18 @@ int main() {
             for (const auto &button : buttons)
                 button->draw(window);
 
-            int x_offset = left_border + button_offset;
-            int y_offset = bottom_border + text_offset;
+            sf::Vector2f screen_text_offset = screen_offset;
 
             for (size_t text_number = 1; text_number < texts.size(); text_number++) {
                 std::string screen_text_string = "Button " + std::to_string(text_number) + ": " + texts[text_number];
 
                 sf::Text screen_text(screen_text_string, font);
-                screen_text.setPosition(x_offset, y_offset);
+                screen_text.setPosition(screen_text_offset);
                 screen_text.setFillColor(sf::Color::Black);
 
                 window.draw(screen_text);
 
-                y_offset += text_offset;
+                screen_text_offset.y += __text_offset;
             }
 
             // Отрисовка лампочек
@@ -130,7 +130,7 @@ int main() {
 
             window.display();
         }
-    }
+    
 
     // завершаем поток передачи звука
     if (audio_transmit) {
