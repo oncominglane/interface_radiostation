@@ -12,9 +12,7 @@
 
 #include "TxRxEth.h"
 
-
-
-//FIXME убрать все отловы ошибок try-catch, если все отлично работает
+// FIXME убрать все отловы ошибок try-catch, если все отлично работает
 
 void customTerminate() {
     std::cerr << "Custom terminate handler called!" << std::endl;
@@ -111,14 +109,15 @@ int main() {
 
         // Запускаем поток приёма звука
         audioRxThread = std::thread(audioReceiver, std::ref(buffer), std::ref(audio_receive), std::ref(signal_received));
+
         sf::RenderWindow window(sf::VideoMode(__resolution_x, __resolution_y), "Radio station remote control system");
         window.setActive(false);
-        
+
         sf::Vector2f screen_offset(__left_ui_border + __graphic_object_offset, __bottom_ui_border);
 
-
         // TODO Make vector and use it in texts positioning
-        Screen_main main_screen(screen_offset, sf::Vector2f(__main_screen_width, __main_screen_height), "assets/white.png", "Main Screen");
+        Screen_main main_screen(screen_offset, sf::Vector2f(__main_screen_width, __main_screen_height), "assets/white.png",
+                                "Main Screen");
 
         // Создаем лампочки
         std::vector<Lamp> lamps;
@@ -140,22 +139,49 @@ int main() {
         }
 
         // Таймер для управления частотой обновления
-        sf::Clock clock;
-        const float updateInterval = 1.0f / 30.0f; // 30 обновлений в секунду
-        float elapsedTime = 0.0f;
-
-
+        sf::Clock   clock;
+        const float updateInterval = 1.0f / 30.0f;  // 30 обновлений в секунду
+        float       elapsedTime    = 0.0f;
 
         std::vector<std::string> texts;
-        //ethernetThread = std::thread(ethernetListener, &texts);
-
-
+        // ethernetThread = std::thread(ethernetListener, &texts);
 
         while (window.isOpen()) {
             sf::Event event;
             while (window.pollEvent(event)) {
-                if (event.type == sf::Event::Closed)
+                //!!! иначе после закрытия окошка программа продолжит выполняться
+                if (event.type == sf::Event::Closed) {
+                    std::cout << "Closing window..." << std::endl;
                     window.close();
+
+                    // Завершаем Ethernet-поток, если он запущен
+                    __listener_thread_running = false;
+                    if (ethernetThread.joinable()) {
+                        std::cout << "Joining Ethernet thread..." << std::endl;
+                        ethernetThread.detach();
+                    }
+
+                    // Завершаем аудиопотоки
+                    audio_receive = false;
+                    if (audioRxThread.joinable()) {
+                        std::cout << "Joining audioRxThread..." << std::endl;
+                        audioRxThread.detach();
+                    }
+
+                    audio_transmit = false;
+                    if (audioTxThread.joinable()) {
+                        std::cout << "Joining audioTxThread..." << std::endl;
+                        audioTxThread.detach();
+                    }
+
+                    // Освобождаем память
+                    std::cout << "Deleting buttons..." << std::endl;
+                    for (auto &button : buttons)
+                        delete button;
+
+                    std::cout << "Program exiting!" << std::endl;
+                    return 0;
+                }
 
                 if (event.type == sf::Event::MouseButtonPressed) {  // Button is pressed -> Sending command
                     for (const auto &button : buttons) {
@@ -165,7 +191,7 @@ int main() {
                         if (button->is_mouse_over(mouse_pos)) {
                             if (button->m_command == "ptt") {
                                 if (!audio_transmit) {  // Проверяем, не идет ли передача
-                                    lamps[0].changeColor(sf::Color::Red); //Лампочка - индикатор передачи, красная
+                                    lamps[0].changeColor(sf::Color::Red);  //Лампочка - индикатор передачи, красная
                                     audio_receive  = false;  // Останавливаем приём звука
                                     audio_transmit = true;
                                     audioTxThread  = std::thread(audioTransmitter, std::ref(buffer), std::ref(audio_transmit));
@@ -192,8 +218,8 @@ int main() {
                         audio_receive = true;  // Возобновляем приём звука
                         lamps[0].changeColor(sf::Color::Black);
                     }
-                }  
-            }  
+                }
+            }
 
             // Обновление таймера
             elapsedTime += clock.restart().asSeconds();
@@ -205,8 +231,8 @@ int main() {
                 // Обновление состояния лампочки индикатора приема сигнала
                 if (signal_received) {
                     lamps[1].changeColor(sf::Color::Yellow);  // Лампочка загорается желтым при приеме сигнала
-                    
-                } else {
+                }
+                else {
                     lamps[1].changeColor(sf::Color::Black);  // Лампочка выключается при отсутствии сигнала
                 }
 
@@ -241,11 +267,12 @@ int main() {
                 }
 
                 window.display();
-            } else {
+            }
+            else {
                 // Если обновление не требуется, добавляем небольшую задержку
                 std::this_thread::sleep_for(std::chrono::milliseconds(1));
             }
-        }  
+        }
 
         // Завершение потоков корректно
         audio_receive = false;
@@ -284,4 +311,3 @@ int main() {
     }
     return 0;
 }
-
