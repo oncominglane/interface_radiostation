@@ -9,35 +9,35 @@
 //#define SERVER_IP "192.168.0.110" // IP адрес ноут общага
 //#define SERVER_IP "10.10.1.217" // IP адрес ноут работа
 
-#define SERVER_IP "192.168.1.1" // IP адрес ноут по проводу
+#define SERVER_IP "192.168.1.1"  // IP адрес ноут по проводу
 
 void audioTxEth_PI(unsigned char *buffer) {
     // Параметры для захвата звука
-    snd_pcm_t *capture_handle;
+    snd_pcm_t           *capture_handle;
     snd_pcm_hw_params_t *hw_params;
 
     // Создание сокета для передачи данных
-    int sockfd;
+    int                sockfd;
     struct sockaddr_in serv_addr;
 
-    unsigned int resample = 1;
-    unsigned int sampleRate = SAMPLERATE;
-    long int dataCapacity = 0;
-    int channels = 1;
-    snd_pcm_uframes_t local_buffer = BUFFER_SIZE;
+    unsigned int      resample      = 1;
+    unsigned int      sampleRate    = SAMPLERATE;
+    long int          dataCapacity  = 0;
+    int               channels      = 1;
+    snd_pcm_uframes_t local_buffer  = BUFFER_SIZE;
     snd_pcm_uframes_t local_periods = PERIODS;
-    
+
     if ((sockfd = socket(AF_INET, SOCK_STREAM, 0)) < 0) {
         perror("Socket creation error");
         return;
     }
 
-    //int optval = 1;
-    //setsockopt(sockfd, SOL_SOCKET, SO_REUSEADDR, &optval, sizeof(optval));
+    // int optval = 1;
+    // setsockopt(sockfd, SOL_SOCKET, SO_REUSEADDR, &optval, sizeof(optval));
 
-    serv_addr.sin_family = AF_INET;
-    serv_addr.sin_port = htons(PORT);
-    serv_addr.sin_addr.s_addr = inet_addr(SERVER_IP); // IP
+    serv_addr.sin_family      = AF_INET;
+    serv_addr.sin_port        = htons(PORT);
+    serv_addr.sin_addr.s_addr = inet_addr(SERVER_IP);  // IP
 
     if (connect(sockfd, (struct sockaddr *)&serv_addr, sizeof(serv_addr)) < 0) {
         perror("Connection failed");
@@ -51,9 +51,9 @@ void audioTxEth_PI(unsigned char *buffer) {
         return;
     }
 
-    int gpio_pin = 19; // GPIO номер для 37 пина на плате
-    pinMode(gpio_pin, INPUT); // Настройка пина как вход
-    pullUpDnControl(gpio_pin, PUD_DOWN); // Подтяжка к "земле" для стабильности
+    int gpio_pin = 19;                    // GPIO номер для 37 пина на плате
+    pinMode(gpio_pin, INPUT);             // Настройка пина как вход
+    pullUpDnControl(gpio_pin, PUD_DOWN);  // Подтяжка к "земле" для стабильности
 
     // Ждём сигнала на пине
     /*printf("Ожидание сигнала на GPIO %d...\n", gpio_pin);
@@ -84,7 +84,7 @@ void audioTxEth_PI(unsigned char *buffer) {
         close(sockfd);
         return;
     }
-    
+
     snd_pcm_hw_params_get_buffer_size(hw_params, &local_buffer);
     snd_pcm_hw_params_get_period_size(hw_params, &local_periods, 0);
 
@@ -98,7 +98,7 @@ void audioTxEth_PI(unsigned char *buffer) {
         return;
     }
 
-    if (snd_pcm_hw_params_set_access (capture_handle, hw_params, SND_PCM_ACCESS_RW_INTERLEAVED) < 0) {
+    if (snd_pcm_hw_params_set_access(capture_handle, hw_params, SND_PCM_ACCESS_RW_INTERLEAVED) < 0) {
         perror("Cannot set access rate");
         snd_pcm_hw_params_free(hw_params);
         snd_pcm_close(capture_handle);
@@ -107,14 +107,14 @@ void audioTxEth_PI(unsigned char *buffer) {
     }
 
     if (snd_pcm_hw_params_set_channels(capture_handle, hw_params, channels) < 0) {
-            perror("Cannot set channel count");
-            snd_pcm_hw_params_free(hw_params);
-            snd_pcm_close(capture_handle);
-            close(sockfd);
-            return;
-        }
+        perror("Cannot set channel count");
+        snd_pcm_hw_params_free(hw_params);
+        snd_pcm_close(capture_handle);
+        close(sockfd);
+        return;
+    }
 
-    if (snd_pcm_hw_params_set_rate_near (capture_handle, hw_params, &sampleRate, 0) < 0) {
+    if (snd_pcm_hw_params_set_rate_near(capture_handle, hw_params, &sampleRate, 0) < 0) {
         perror("Cannot set rate near");
         snd_pcm_hw_params_free(hw_params);
         snd_pcm_close(capture_handle);
@@ -154,13 +154,11 @@ void audioTxEth_PI(unsigned char *buffer) {
         return;
     }
 
-
     // Освобождение выделенной памяти
     snd_pcm_hw_params_free(hw_params);
 
-
-    //snd_pcm_hw_params_get_buffer_size(hw_params, &local_buffer);
-    //snd_pcm_hw_params_get_period_size(hw_params, &local_periods, 0);
+    // snd_pcm_hw_params_get_buffer_size(hw_params, &local_buffer);
+    // snd_pcm_hw_params_get_period_size(hw_params, &local_periods, 0);
 
     printf("Buffer size: %lu, Period size: %lu\n", local_buffer, local_periods);
 
@@ -173,28 +171,27 @@ void audioTxEth_PI(unsigned char *buffer) {
         return;
     }
 
-
-   // Основной цикл для захвата и передачи данных
+    // Основной цикл для захвата и передачи данных
     while (digitalRead(gpio_pin) == HIGH) {
-    //while(1) {
-        // Захватываем аудиоданные
-        //printf("j = %d\n", j);
+        // while(1) {
+        //  Захватываем аудиоданные
+        // printf("j = %d\n", j);
         int frames = snd_pcm_readi(capture_handle, buffer, BUFFER_SIZE / (channels * 2));
-        //system("gpio readall > gpio.txt");
-        //printf("sus6.5\n");
+        // system("gpio readall > gpio.txt");
+        // printf("sus6.5\n");
         if (frames < 0) {
             fprintf(stderr, "Read error: %s\n", snd_strerror(frames));  // Выводим точную ошибку ALSA
             snd_pcm_prepare(capture_handle);  // Попробуем восстановить поток
             memset(buffer, 0, BUFFER_SIZE);
             continue;
         }
-        
+
         /*for (int k = 0; k < BUFFER_SIZE; k++) {
             printf("%02x", buffer[k]);
             if (((k + 1) % 16) == 0)
                 printf("\n");
         }*/                                           //Отладка
-        
+
         /*snd_pcm_uframes_t avail = snd_pcm_avail_update(capture_handle);
         if (avail < local_periods) {
             // Если в буфере слишком мало данных, ждем
@@ -208,7 +205,7 @@ void audioTxEth_PI(unsigned char *buffer) {
         printf("]\n");
         */
         // Передаем данные по сети
-        ssize_t bytes_sent = send(sockfd, buffer, BUFFER_SIZE, 0);  
+        ssize_t bytes_sent = send(sockfd, buffer, BUFFER_SIZE, 0);
         if (bytes_sent < 0) {
             perror("Send error");
             close(sockfd);

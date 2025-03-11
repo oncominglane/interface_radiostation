@@ -5,7 +5,7 @@
 //#define SERVER_IP "192.168.0.119"  // IP адрес дом
 //#define SERVER_IP "10.10.1.62"  // IP адрес работа
 
-#define SERVER_IP "192.168.1.2"  // IP адрес по проводу 
+#define SERVER_IP "192.168.1.2"  // IP адрес по проводу
 
 void audioTxEth_client(unsigned char *buffer) {
     // Параметры для захвата звука
@@ -142,7 +142,6 @@ void audioTxEth_client(unsigned char *buffer) {
 
     // Основной цикл для захвата и передачи данных
     while (1) {
-
         int frames = snd_pcm_readi(capture_handle, buffer, BUFFER_SIZE / (channels * 2));
         // system("gpio readall > gpio.txt");
         // printf("sus6.5\n");
@@ -151,7 +150,6 @@ void audioTxEth_client(unsigned char *buffer) {
             snd_pcm_prepare(capture_handle);  // Попробуем восстановить поток
             continue;
         }
-
 
         // Передаем данные по сети
         // ssize_t bytes_sent = send(sockfd, buffer, frames * channels * 2, 0);

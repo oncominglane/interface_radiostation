@@ -22,6 +22,7 @@ void audioRxEth_client(unsigned char *buffer) {
     snd_pcm_uframes_t local_buffer  = BUFFER_SIZE;
     snd_pcm_uframes_t local_periods = PERIODS;
     socklen_t         clilen;
+    snd_pcm_state_t   state;
 
     // Настройка сокета
     if ((sockfd = socket(AF_INET, SOCK_STREAM, 0)) < 0) {
@@ -44,11 +45,9 @@ void audioRxEth_client(unsigned char *buffer) {
 
     listen(sockfd, 5);
     clilen = sizeof(cli_addr);
-    
-    
+
     snd_pcm_state_t state;
 
-    
     // Открываем PCM устройство
     if (snd_pcm_open(&playback_handle, "plughw:0,0", SND_PCM_STREAM_PLAYBACK, 0) < 0) {
         perror("Cannot open audio device");
@@ -234,8 +233,8 @@ void audioRxEth_client(unsigned char *buffer) {
         while (1) {
             // memset(buffer, 0, BUFFER_SIZE);
             int n = recv(newsockfd, buffer, BUFFER_SIZE, 0);
-            //printf("BUFFER: {%s}; length = %d;\n", buffer, n);
-            // printf("BUFFER: {%s}; length = `%d`;\n", buffer, n);
+            // printf("BUFFER: {%s}; length = %d;\n", buffer, n);
+            //  printf("BUFFER: {%s}; length = `%d`;\n", buffer, n);
 
             if (n <= 0) {
                 if (n == 0) {
@@ -264,7 +263,6 @@ void audioRxEth_client(unsigned char *buffer) {
             // snd_pcm_uframes_t avail;
             int frames = n / (channels * 2);
             // avail = snd_pcm_avail_update(playback_handle);
-
 
             int nulls = 0;
             for (size_t i = 0; i < BUFFER_SIZE; i++) {

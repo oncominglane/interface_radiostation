@@ -33,16 +33,15 @@
 #define CAPTURE_DEV "hw:0,6"
 #define PLAYBACK_DEV "hw:0,0"
 
-void Rx(unsigned char * buffer);
-void Tx(unsigned char * buffer);
-void RxEth(unsigned char * buffer);
-void TxEth(unsigned char * buffer);
-void audioRxEth_client(unsigned char * buffer);
-void audioTxEth_PI(unsigned char * buffer);
-void audioTxEth_client(unsigned char * buffer);
-void audioRxEth_PI(unsigned char * buffer);
-char * find_ttyUSB_port();
-snd_pcm_t * setup_hw(const char * device, unsigned int channels, unsigned int rate, snd_pcm_uframes_t buffer_size, snd_pcm_uframes_t period_size, int sockfd);
-int kbhit(void);
-
-
+void       Rx(unsigned char *buffer);
+void       Tx(unsigned char *buffer);
+void       RxEth(unsigned char *buffer);
+void       TxEth(unsigned char *buffer);
+void       audioRxEth_client(unsigned char *buffer);
+void       audioTxEth_PI(unsigned char *buffer);
+void       audioTxEth_client(unsigned char *buffer);
+void       audioRxEth_PI(unsigned char *buffer);
+char      *find_ttyUSB_port();
+snd_pcm_t *setup_hw(const char *device, unsigned int channels, unsigned int rate, snd_pcm_uframes_t buffer_size,
+                    snd_pcm_uframes_t period_size, int sockfd);
+int        kbhit(void);
