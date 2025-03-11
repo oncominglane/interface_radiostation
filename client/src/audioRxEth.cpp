@@ -160,6 +160,10 @@ void audioRxEth(unsigned char *buffer, std::atomic<bool> &audio_receive, std::at
         while (audio_receive) {
             int n = recv(newsockfd, buffer, BUFFER_SIZE, 0);
 
+            //!!!
+            signal_received = true;
+            //!!!
+
             if (n <= 0) {
                 if (n == 0) {
                     printf("Connection closed by client\n");
@@ -173,8 +177,8 @@ void audioRxEth(unsigned char *buffer, std::atomic<bool> &audio_receive, std::at
                     perror("Receive error");
                     signal_received = false;  // Сбрасываем флаг приема сигнала
                     snd_pcm_drop(playback_handle);
-                    memset(buffer, 0, BUFFER_SIZE);
                     close(newsockfd);
+                    memset(buffer, 0, BUFFER_SIZE);
                 }
                 break;
             }
@@ -186,12 +190,12 @@ void audioRxEth(unsigned char *buffer, std::atomic<bool> &audio_receive, std::at
                 snd_pcm_prepare(playback_handle);
             }
 
-            err        = snd_pcm_writei(playback_handle, buffer, frames);
+            err = snd_pcm_writei(playback_handle, buffer, frames);
             // Воспроизводим данные с помощью ALSA
             if (err < 0) {
                 if (err == -EPIPE) {
                     fprintf(stderr, "Temporary underrun, retrying...\n");  //Обработка, если установлен флаг SND_PCM_NONBLOCK
-                    snd_pcm_prepare(playback_handle);
+                    snd_pcm_recover(playback_handle, err, 0);
                     continue;
                 }
                 if (err == EAGAIN) {

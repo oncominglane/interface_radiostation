@@ -205,6 +205,7 @@ int main() {
                 // Обновление состояния лампочки индикатора приема сигнала
                 if (signal_received) {
                     lamps[1].changeColor(sf::Color::Yellow);  // Лампочка загорается желтым при приеме сигнала
+                    
                 } else {
                     lamps[1].changeColor(sf::Color::Black);  // Лампочка выключается при отсутствии сигнала
                 }
