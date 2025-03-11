@@ -12,9 +12,6 @@
 
 #include "TxRxEth.h"
 
-
-
-
 bool        __listener_thread_running = true;
 std::thread ethernetThread;
 
@@ -47,7 +44,8 @@ int main() {
     window.setActive(false);
 
     sf::Vector2f screen_offset(__left_ui_border + __graphic_object_offset, __bottom_ui_border);
-    Screen_main main_screen(screen_offset, sf::Vector2f(__main_screen_width, __main_screen_height), "assets/white.png", "Main Screen");
+    Screen_main  main_screen(screen_offset, sf::Vector2f(__main_screen_width, __main_screen_height), "assets/white.png",
+                             "Main Screen");
 
     std::vector<ButtonCircle *> buttons;
     buttons_create(buttons);
@@ -72,8 +70,7 @@ int main() {
                     button->change_color(sf::Color::White);
                     sf::Vector2f mouse_pos(event.touch.x, event.touch.y);
 
-
-                    if (button->is_mouse_over(mouse_pos)) 
+                    if (button->is_mouse_over(mouse_pos))
                         if (button->m_command == "ptt") {
                             if (!audio_transmit) {  // Проверяем, не идет ли передача
                                 lamps[0].changeColor(sf::Color::Red);
@@ -85,52 +82,51 @@ int main() {
                         // FIXME Get coordinartes from event not from window directly
                         else
                             transmit_eth(button->m_command);
-                    }
                 }
             }
-
-            if (event.type == sf::Event::MouseButtonReleased) {
-                if (audio_transmit) {
-                    audio_transmit = false;  // Устанавливаем флаг завершения
-                    if (audioThread.joinable()) {
-                        audioThread.join();  // Дожидаемся завершения потока
-                    }
-                    lamps[0].changeColor(sf::Color::Black);
-                }
-            }
-
-            window.clear(sf::Color::Black);
-
-            if (texts.size() > 0)
-                main_screen.change_text("Message: " + texts[0]);
-
-            main_screen.draw(window);
-
-            for (const auto &button : buttons)
-                button->draw(window);
-
-            sf::Vector2f screen_text_offset = screen_offset;
-
-            for (size_t text_number = 1; text_number < texts.size(); text_number++) {
-                std::string screen_text_string = "Button " + std::to_string(text_number) + ": " + texts[text_number];
-
-                sf::Text screen_text(screen_text_string, font);
-                screen_text.setPosition(screen_text_offset);
-                screen_text.setFillColor(sf::Color::Black);
-
-                window.draw(screen_text);
-
-                screen_text_offset.y += __text_offset;
-            }
-
-            // Отрисовка лампочек
-            for (auto &lamp : lamps) {
-                lamp.draw(window);
-            }
-
-            window.display();
         }
-    
+
+        if (event.type == sf::Event::MouseButtonReleased) {
+            if (audio_transmit) {
+                audio_transmit = false;  // Устанавливаем флаг завершения
+                if (audioThread.joinable()) {
+                    audioThread.join();  // Дожидаемся завершения потока
+                }
+                lamps[0].changeColor(sf::Color::Black);
+            }
+        }
+
+        window.clear(sf::Color::Black);
+
+        if (texts.size() > 0)
+            main_screen.change_text("Message: " + texts[0]);
+
+        main_screen.draw(window);
+
+        for (const auto &button : buttons)
+            button->draw(window);
+
+        sf::Vector2f screen_text_offset = screen_offset;
+
+        for (size_t text_number = 1; text_number < texts.size(); text_number++) {
+            std::string screen_text_string = "Button " + std::to_string(text_number) + ": " + texts[text_number];
+
+            sf::Text screen_text(screen_text_string, font);
+            screen_text.setPosition(screen_text_offset);
+            screen_text.setFillColor(sf::Color::Black);
+
+            window.draw(screen_text);
+
+            screen_text_offset.y += __text_offset;
+        }
+
+        // Отрисовка лампочек
+        for (auto &lamp : lamps) {
+            lamp.draw(window);
+        }
+
+        window.display();
+    }
 
     // завершаем поток передачи звука
     if (audio_transmit) {

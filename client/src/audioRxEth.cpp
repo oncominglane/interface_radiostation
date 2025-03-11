@@ -47,7 +47,7 @@ void audioRxEth(unsigned char *buffer, std::atomic<bool> &audio_receive, std::at
     clilen = sizeof(cli_addr);
 
     // Открываем PCM устройство
-    if (snd_pcm_open(&playback_handle, "plughw:0,0", SND_PCM_STREAM_PLAYBACK, 0) < 0) {
+    if (snd_pcm_open(&playback_handle, "plughw:0,0", SND_PCM_STREAM_PLAYBACK, SND_PCM_NONBLOCK) < 0) {
         perror("Cannot open audio device");
         close(sockfd);
         return;
@@ -150,19 +150,17 @@ void audioRxEth(unsigned char *buffer, std::atomic<bool> &audio_receive, std::at
         }
 
         printf("Client connected\n");
-        
+
         if (snd_pcm_prepare(playback_handle) < 0) {
             printf("Error preparing\n");
         }
-
 
         // Основной цикл для приёма и воспроизведения звуковых данных
         while (audio_receive) {
             int n = recv(newsockfd, buffer, BUFFER_SIZE, 0);
 
-            //!!!
+            // включаем флаг приема для индикатора
             signal_received = true;
-            //!!!
 
             if (n <= 0) {
                 if (n == 0) {
@@ -185,7 +183,7 @@ void audioRxEth(unsigned char *buffer, std::atomic<bool> &audio_receive, std::at
 
             int err    = 0;
             int frames = n / (channels * 2);
-            state = snd_pcm_state(playback_handle);
+            state      = snd_pcm_state(playback_handle);
             if (state == SND_PCM_STATE_XRUN) {
                 snd_pcm_prepare(playback_handle);
             }
@@ -214,4 +212,5 @@ void audioRxEth(unsigned char *buffer, std::atomic<bool> &audio_receive, std::at
     snd_pcm_close(playback_handle);
     close(newsockfd);
     close(sockfd);
+    memset(buffer, 0, BUFFER_SIZE);
 }
