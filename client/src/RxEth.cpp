@@ -1,7 +1,5 @@
 #include "TxRxEth.h"
 
-#define PORT 5678  //ноутбук и малинка
-
 std::string receive_eth() {
     try {
         int       sockfd, newsockfd;

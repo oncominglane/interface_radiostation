@@ -1,7 +1,4 @@
 #include "TxRxEth.h"
-#include <alsa/pcm.h>
-#include <cerrno>
-#include <cstdlib>
 
 void audioRxEth(unsigned char *buffer, std::atomic<bool> &audio_receive, std::atomic<bool> &signal_received) {
     //Параметры для захвата звука

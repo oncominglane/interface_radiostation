@@ -1,7 +1,5 @@
 #include "TxRxEth.h"
 
-#define SERVER_PORT 5678  // Порт сервера
-
 int transmit_eth(std::string message1) {
     const char *message = message1.c_str();
 
@@ -15,7 +13,7 @@ int transmit_eth(std::string message1) {
 
     // Настройка структуры адреса сервера
     server_addr.sin_family = AF_INET;
-    server_addr.sin_port   = htons(SERVER_PORT);
+    server_addr.sin_port   = htons(PORT);
     if (inet_pton(AF_INET, SERVER_IP, &server_addr.sin_addr) <= 0) {
         perror("Invalid address/ Address not supported");
         exit(EXIT_FAILURE);

@@ -4,6 +4,7 @@
 #include <csignal>
 #include <iostream>
 #include <cstring>
+#include <cstdlib>
 #include <string>
 #include <fstream>
 #include <vector>
@@ -11,6 +12,7 @@
 #include <thread>
 #include <functional>
 #include <atomic>
+#include <cerrno>
 
 #include <time.h>
 #include <stdio.h>
@@ -40,9 +42,9 @@
 #define PORT 5678
 #define SAMPLERATE 44100
 
-//#define SERVER_IP "192.168.1.2"
-//#define SERVER_IP "10.10.1.62"
-#define SERVER_IP "192.168.0.119"
+//#define SERVER_IP "192.168.1.2" // подключение по проводу
+//#define SERVER_IP "10.10.1.62"  // подключение по WiFi офис
+#define SERVER_IP "192.168.0.119" // подключение по WiFi общага
 
 int         transmit_eth(std::string message1);
 void        audioTxEth(unsigned char *buffer, std::atomic<bool> &audio_transmit);

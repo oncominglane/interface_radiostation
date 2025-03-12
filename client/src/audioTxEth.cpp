@@ -1,5 +1,4 @@
 #include "TxRxEth.h"
-#include <atomic>
 
 void audioTxEth(unsigned char *buffer, std::atomic<bool> &audio_transmit) {
     // Параметры для захвата звука

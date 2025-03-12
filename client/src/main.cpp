@@ -1,6 +1,4 @@
 #include <X11/Xlib.h>
-#include <thread>
-#include <atomic>
 #include <mutex>
 #undef None
 
