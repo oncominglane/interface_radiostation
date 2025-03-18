@@ -4,8 +4,6 @@ void audioRxEth(unsigned char *buffer, std::atomic<bool> &audio_receive, std::at
     //Параметры для захвата звука
     snd_pcm_t           *playback_handle;
     snd_pcm_hw_params_t *hw_params;
-    // snd_pcm_sw_params_t *sw_params;
-    // snd_async_handler_t *pcm_callback;
 
     // Создание сокета для передачи данных
     int                sockfd, newsockfd;
@@ -29,16 +27,37 @@ void audioRxEth(unsigned char *buffer, std::atomic<bool> &audio_receive, std::at
     int optval = 1;
     setsockopt(sockfd, SOL_SOCKET, SO_REUSEADDR, &optval, sizeof(optval));
 
+    // Делаем сокет **неблокирующим**
+    fcntl(sockfd, F_SETFL, O_NONBLOCK);
     memset(&serv_addr, 0, sizeof(serv_addr));
     serv_addr.sin_family      = AF_INET;
     serv_addr.sin_addr.s_addr = INADDR_ANY;
     serv_addr.sin_port        = htons(PORT);
 
+    std::cout << "Binding to port: " << PORT << std::endl;
+    /*
     int bindResult = bind(sockfd, (struct sockaddr *)&serv_addr, sizeof(serv_addr));
     if (bindResult < 0) {
         std::cerr << "Error on binding: " << strerror(errno) << " (errno: " << errno << ")" << std::endl;
+        close(sockfd);
         throw std::runtime_error("Binding failed.");
     }
+    */
+
+
+    try {
+        bind(sockfd, (struct sockaddr *)&serv_addr, sizeof(serv_addr));
+    } catch (const std::exception &e) {
+        std::cerr << "Binding failed: " << e.what() << std::endl;
+    }
+
+    struct linger so_linger;
+    so_linger.l_onoff = 1;
+    so_linger.l_linger = 1;
+    setsockopt(sockfd, SOL_SOCKET, SO_LINGER, &so_linger, sizeof(so_linger));
+        
+
+
 
     listen(sockfd, 5);
     clilen = sizeof(cli_addr);
@@ -140,17 +159,39 @@ void audioRxEth(unsigned char *buffer, std::atomic<bool> &audio_receive, std::at
 
     printf("Buffer size: %lu, Period size: %lu\n", local_buffer, local_periods);
 
-    while (1) {
-        if ((newsockfd = accept(sockfd, (struct sockaddr *)&cli_addr, &clilen)) < 0) {
-            perror("Accept error");
-            continue;
+    while (audio_receive) {
+        // Проверяем, не пришел ли сигнал завершения перед `accept()`
+        if (!audio_receive) break;
+
+
+
+        if (fcntl(sockfd, F_GETFD) == -1) {
+            std::cerr << "Socket closed unexpectedly!" << std::endl;
         }
 
-        printf("Client connected\n");
+        
+
+
+        // Принимаем подключение (неблокирующий режим)
+        newsockfd = accept(sockfd, (struct sockaddr *)&cli_addr, &clilen);
+        if (newsockfd < 0) {
+            if (errno == EWOULDBLOCK || errno == EAGAIN) {
+                std::this_thread::sleep_for(std::chrono::milliseconds(100));
+                continue;  // Повторяем цикл
+            } else {
+                perror("Accept error");
+                break;
+            }
+        }
+
+        printf("receiving: Client connected\n");
 
         if (snd_pcm_prepare(playback_handle) < 0) {
             printf("Error preparing\n");
         }
+
+        // Делаем клиентский сокет неблокирующим
+        fcntl(newsockfd, F_SETFL, O_NONBLOCK);
 
         // Основной цикл для приёма и воспроизведения звуковых данных
         while (audio_receive) {
@@ -158,25 +199,24 @@ void audioRxEth(unsigned char *buffer, std::atomic<bool> &audio_receive, std::at
 
             // включаем флаг приема для индикатора
             signal_received = true;
+            
+            if (n < 0) {
+                signal_received = false;
+                if (errno == EWOULDBLOCK || errno == EAGAIN) {
+                    std::this_thread::sleep_for(std::chrono::milliseconds(10));
+                    continue;
+                } else {
+                    perror("Receive error");
 
-            if (n <= 0) {
-                if (n == 0) {
-                    printf("Connection closed by client\n");
-                    signal_received = false;  // Сбрасываем флаг приема сигнала
-                    snd_pcm_drop(playback_handle);
-                    close(newsockfd);
-                    memset(buffer, 0, BUFFER_SIZE);
+                    
                     break;
                 }
-                else {
-                    perror("Receive error");
-                    signal_received = false;  // Сбрасываем флаг приема сигнала
-                    snd_pcm_drop(playback_handle);
-                    close(newsockfd);
-                    memset(buffer, 0, BUFFER_SIZE);
-                }
+            } else if (n == 0) {
+                std::cout << "Client disconnected" << std::endl;
                 break;
             }
+
+           
 
             int err    = 0;
             int frames = n / (channels * 2);
@@ -188,26 +228,21 @@ void audioRxEth(unsigned char *buffer, std::atomic<bool> &audio_receive, std::at
             err = snd_pcm_writei(playback_handle, buffer, frames);
             // Воспроизводим данные с помощью ALSA
             if (err < 0) {
-                if (err == -EPIPE) {
-                    fprintf(stderr, "Temporary underrun, retrying...\n");  //Обработка, если установлен флаг SND_PCM_NONBLOCK
-                    snd_pcm_recover(playback_handle, err, 0);
-                    continue;
-                }
-                if (err == EAGAIN) {
-                    fprintf(stderr, "Temporary unavailable, retrying...\n");
-                    continue;
-                }
+                snd_pcm_recover(playback_handle, err, 0);
             }
             dataCapacity += n;
 
             // printf("\ndataCapacity: %ld\n\n", dataCapacity);
         }
+        close(newsockfd);
+        std::cout << "Connection closed" << std::endl;
     }
 
     // Освобождаем ресурсы
+    std::cout << "Stopping audio receiver..." << std::endl;
     snd_pcm_drop(playback_handle);
     snd_pcm_close(playback_handle);
-    close(newsockfd);
     close(sockfd);
     memset(buffer, 0, BUFFER_SIZE);
+    std::cout << "Audio receiver stopped." << std::endl;
 }

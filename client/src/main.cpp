@@ -18,17 +18,24 @@ void customTerminate() {
 }
 
 bool        __listener_thread_running = true;
-std::thread ethernetThread;
+std::mutex texts_mutex;
 
 void ethernetListener(std::vector<std::string> *texts) {  // Функция прослушивания Ethernet соединения
     try {
+        std::cout << "ethernetListener started " << std::endl;
+        
         while (__listener_thread_running) {
             std::string data = receive_eth();
+            std::cout << "Received raw data: " << data << std::endl;
+            if (data.empty()) continue;  // Пропускаем пустые пакеты
 
+            { // Ограничиваем область действия lock_guard
+            std::lock_guard<std::mutex> lock(texts_mutex);            
             std::cout << "[RECEIVE]: {" << data << std::endl;
             message(data, texts);
 
             std::cout << "}\n\n[DATA]: `" << data << "`\n[TEXTS]: `" << texts << "`\n";
+            }
         }
     }
     catch (const std::exception &e) {
@@ -50,18 +57,25 @@ std::atomic<bool> signal_received(false);  // Флаг для индикации
 
 std::thread audioRxThread;
 std::thread audioTxThread;
+std::thread ethThread;
 
 void audioReceiver(std::vector<unsigned char> &buffer, std::atomic<bool> &running, std::atomic<bool> &signal_received) {
     try {
         while (running) {
+            std::cout << "audioReceiver is running...\n";  // Лог, чтобы видеть, что происходит
+            if (!running) break;  // Принудительный выход
+
             std::this_thread::sleep_for(std::chrono::milliseconds(10));
+            
             std::vector<unsigned char> localBuffer;
             {
                 std::lock_guard<std::mutex> lock(buffer_mutex);
                 localBuffer = buffer;  // Копируем данные
             }
             try {
+                std::cout << "Calling audioRxEth...\n";
                 audioRxEth(localBuffer.data(), running, signal_received);
+                std::cout << "Returned from audioRxEth...\n";
             }
             catch (const std::exception &e) {
                 std::cerr << "audioRxEth exception: " << e.what() << std::endl;
@@ -77,7 +91,11 @@ void audioReceiver(std::vector<unsigned char> &buffer, std::atomic<bool> &runnin
         std::cerr << "Unknown exception in audioReceiver!" << std::endl;
         running = false;
     }
+    std::cout << "audioReceiver has stopped.\n";
 }
+
+
+
 
 void audioTransmitter(std::vector<unsigned char> &buffer, std::atomic<bool> &running) {
     try {
@@ -107,6 +125,10 @@ int main() {
 
         // Запускаем поток приёма звука
         audioRxThread = std::thread(audioReceiver, std::ref(buffer), std::ref(audio_receive), std::ref(signal_received));
+        
+        // Запускаем поток ethernet соединения
+        std::vector<std::string> texts;
+        ethThread = std::thread(ethernetListener, &texts);
 
         sf::RenderWindow window(sf::VideoMode(__resolution_x, __resolution_y), "Radio station remote control system");
         window.setActive(false);
@@ -114,8 +136,8 @@ int main() {
         sf::Vector2f screen_offset(__left_ui_border + __graphic_object_offset, __bottom_ui_border);
 
         // TODO Make vector and use it in texts positioning
-        Screen_main main_screen(screen_offset, sf::Vector2f(__main_screen_width, __main_screen_height), "assets/white.png",
-                                "Main Screen");
+        Screen_main main_screen(screen_offset, sf::Vector2f(__main_screen_width, __main_screen_height), 
+                                                                    "assets/white.png", "Main Screen");
 
         // Создаем лампочки
         std::vector<Lamp> lamps;
@@ -141,8 +163,6 @@ int main() {
         const float updateInterval = 1.0f / 30.0f;  // 30 обновлений в секунду
         float       elapsedTime    = 0.0f;
 
-        std::vector<std::string> texts;
-        // ethernetThread = std::thread(ethernetListener, &texts);
 
         while (window.isOpen()) {
             sf::Event event;
@@ -154,22 +174,22 @@ int main() {
 
                     // Завершаем Ethernet-поток, если он запущен
                     __listener_thread_running = false;
-                    if (ethernetThread.joinable()) {
+                    if (ethThread.joinable()) {
                         std::cout << "Joining Ethernet thread..." << std::endl;
-                        ethernetThread.detach();
+                        ethThread.join();
                     }
 
                     // Завершаем аудиопотоки
                     audio_receive = false;
                     if (audioRxThread.joinable()) {
                         std::cout << "Joining audioRxThread..." << std::endl;
-                        audioRxThread.detach();
+                        audioRxThread.join();
                     }
 
                     audio_transmit = false;
                     if (audioTxThread.joinable()) {
                         std::cout << "Joining audioTxThread..." << std::endl;
-                        audioTxThread.detach();
+                        audioTxThread.join();
                     }
 
                     // Освобождаем память
@@ -177,7 +197,7 @@ int main() {
                     for (auto &button : buttons)
                         delete button;
 
-                    std::cout << "Program exiting!" << std::endl;
+                    std::cout << "FINISH!" << std::endl;
                     return 0;
                 }
 
@@ -196,8 +216,11 @@ int main() {
                                 }
                             }
                             // FIXME Get coordinartes from event not from window directly
-                            else
+                            else{
                                 transmit_eth(button->m_command);
+                                //receiveTextMessage(&texts);
+                                // Приостановка приема звука на время ожидания приема текста
+                            }
                         }
                     }
                 }
@@ -213,7 +236,18 @@ int main() {
                             std::cerr << "Exception while joining audioRxThread: " << e.what() << std::endl;
                         }
 
-                        audio_receive = true;  // Возобновляем приём звука
+                        // Безопасный перезапуск приема
+                        if (!audio_receive) {
+                            std::cout << "Restarting audioReceiver...\n";
+                            audio_receive = true;
+
+                            if (audioRxThread.joinable()) {
+                                std::cout << "Joining old audioRxThread...\n";
+                                audioRxThread.join();
+                            }
+
+                            audioRxThread = std::thread(audioReceiver, std::ref(buffer), std::ref(audio_receive), std::ref(signal_received));
+                        }
                         lamps[0].changeColor(sf::Color::Black);
                     }
                 }
@@ -307,5 +341,6 @@ int main() {
         std::cerr << "Unknown exception caught in main!" << std::endl;
         return EXIT_FAILURE;
     }
+    std::cout << "FINISH!" << std::endl;
     return 0;
 }
